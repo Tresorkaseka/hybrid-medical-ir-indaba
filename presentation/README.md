@@ -12,15 +12,11 @@ Présentation en français pour des médecins et un public non spécialiste : **
 - Résultats vérifiés, interprétation, incertitude et positionnement dans la littérature.
 - Ressources locales et perspectives ; aucune validation clinique annoncée.
 
-## Présenter hors connexion
+## Documents
 
-Ouvrir `index.html` ou servir ce dossier :
-
-```bash
-python3 -m http.server 8790 --bind 127.0.0.1
-```
-
-Puis http://127.0.0.1:8790/index.html . Droite/gauche révèlent ou masquent les étapes avant de changer de slide ; Échap ouvre la vue d’ensemble ; F active le plein écran ; S ouvre les notes (fenêtre à autoriser si nécessaire). Toutes les dépendances sont locales. Le PDF est statique, avec toutes les étapes visibles, et reste un support de secours ; ce n’est pas un PowerPoint éditable.
+- [Slides en PDF](presentation.pdf)
+- [Notes de présentation](NOTES.md)
+- [Sources scientifiques](SOURCES.md)
 
 ## Texte, notes et sources
 

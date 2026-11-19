@@ -16,8 +16,8 @@
       "sha256": "3169a5b791d15534edc5dd63bea5032b41084a5bdc02485d2cb037601477a3cb"
     },
     "README.md": {
-      "bytes": 6914,
-      "sha256": "5829266c57a1ca9c6215f69a3f2c3aedb625faaa65703d5609c685912461cf24"
+      "bytes": 6635,
+      "sha256": "c6e146e40abe37ec332ffdf14cd037dfe62ec93cc82385905c54854c419d60ff"
     },
     "artifacts/frozen-code/decision_code.zip": {
       "bytes": 4702,
@@ -396,8 +396,8 @@
       "sha256": "6e12d45f014b9c8375eede64130fa4e8d47c5e13d4760b92531449e8ca8fc860"
     },
     "presentation/README.md": {
-      "bytes": 1819,
-      "sha256": "f0d64b4aa3554c87b2a50979628a9adb0fa2ab947c81ea7ca9b1d4eb0611231d"
+      "bytes": 1409,
+      "sha256": "9bd11acf3b988fda174215aa04aa78ce505c2f4f1c35299fd48d6bb23fe4af65"
     },
     "presentation/SOURCES.md": {
       "bytes": 3957,

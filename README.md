@@ -85,14 +85,6 @@ python scripts/verify_public_release.py
 
 Python ≥3.11. `requirements-lock.txt` conserve l’environnement CPU observé ; les versions GPU BGE sont dans `results/bge-control-raw/requirements.txt`. Cette installation de base ne télécharge ni corpus ni poids de modèles. Les versions verrouillées ne garantissent pas la disponibilité de roues binaires sur toutes les plateformes.
 
-Pour présenter les slides avec animations, servir le dossier localement :
-
-```bash
-python3 -m http.server 8790 --bind 127.0.0.1 --directory presentation
-```
-
-Ouvrir <http://127.0.0.1:8790/>. Les dépendances Reveal.js sont incluses ; le PDF est la version statique de secours.
-
 ## Ce que cette version ne démontre pas
 
 L’étude est rétrospective, sur des jugements TREC incomplets. Les règles démographiques ont été développées sur les mêmes 125 requêtes. Le test de fautes comporte un seul tirage synthétique imbriqué à 5 % et 10 %, pour BM25/A/B/C seulement. Il n’y a ni calibration clinique, ni évaluation hospitalière, ni mesure en français. IU Chest X-ray, la recherche texte–image et l’exécution locale sur RTX 3050 restent des perspectives.
