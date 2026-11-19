@@ -10,7 +10,6 @@
 | 7 340 logits BGE | `results/bge-control-raw/scores_logits-07340.jsonl` |
 | Révisions, empreintes et préflights | Sous-dossiers bruts Eos/BGE |
 | Pool 50 et bruit BM25/A/B/C | `results/exp1_pool_recall50.json`, `exp1_noise_*.json` |
-| Audit local original | `results/indaba_coherence_audit.json` |
 | Intégrité de la publication | `PUBLIC_MANIFEST.json`, `scripts/verify_public_release.py` |
 | Supports | `paper/`, `poster/`, `presentation/` |
 
@@ -18,10 +17,10 @@ Entrées communes Eos/BGE : SHA256 `42988327922fcc5d1cc0c7f5431d531fae441265dc01
 
 Le manifeste public est un inventaire d’intégrité, pas une signature cryptographique de l’auteur. Il exclut son propre fichier et le répertoire Git. La version du dépôt se cite aussi par son commit.
 
-## Exclusions
+## Données non distribuées
 
-Le dépôt public n’emporte pas l’historique Git du dépôt privé. Aucun corpus complet, texte de requête TREC en fichier de données, poids, embeddings, cache, environnement, cookie, clé, configuration de compte, capture de Drive ou journal de conversation n’est publié. Les notes de travail, Memory Bank et documents historiques intermédiaires restent privés. Les exemples fictifs et les extraits cités dans les manuscrits gardent leur contexte.
+Le corpus intégral, les textes des requêtes, les poids des modèles et les embeddings ne sont pas inclus. Les commandes de préparation des données sont décrites dans le [guide de reproduction](reproduire.md). Les exemples fictifs et les extraits cités dans les manuscrits gardent leur contexte.
 
-## Limites de la preuve
+## Ce que permet la vérification
 
-Les 591 contrôles portent sur la cohérence des artefacts locaux, pas sur une évaluation clinique ni une revue exhaustive des références. L’audit ne démontre pas à lui seul la généralisation du système. Le contrôle public vérifie les octets distribués et une partie des calculs statistiques ; une reconstruction complète exige les sources publiques et les entrées attendues.
+Le manifeste permet de contrôler les fichiers distribués. Le script de vérification recalcule les moyennes et la correction de Holm à partir du rapport. La reproduction complète des classements et métriques nécessite les entrées TREC identifiées dans le protocole. Ces contrôles ne constituent pas une validation clinique.

@@ -7,8 +7,8 @@
 - `data/exp1_decision_eos_bge.json` : copie du rapport canonique `results/exp1_decision_eos_bge.json`, moyennes, IC, Wilcoxon, famille prospective de 99 tests par année. nDCG@10 arrondi à trois décimales dans slides.js.
 - `data/exp1_noise_semantic.json` : copie du rapport canonique de robustesse, bruit synthétique unique et imbriqué, seed 20261117. Pas de test direct de sensibilité B/C.
 - `../results/eos-v2-raw/` : scores et provenance du calcul Eos terminé, 7 340 paires. Durée globale 5 507,75 s, sauvegardes comprises, hors chargement/préflight. Aucune latence de consultation ni compatibilité RTX 3050 mesurée.
-- `../paper/main.tex`, `../paper/main_fr.tex`, `../docs/etat-des-resultats.md` : contexte, protocole et limites.
-- `assets/architecture.html` : schéma autonome construit avec Stack Diagram. Recherche cosinus exacte, masque SQL, reranking top 50, sans RRF. Les rangs 51–1000 restent inchangés.
+- `../paper/main.tex`, `../paper/main_fr.tex`, `../docs/public/resultats.md` : contexte, protocole et limites.
+- `assets/architecture.html` : schéma autonome. Recherche cosinus exacte, masque SQL, reranking top 50, sans RRF. Les rangs 51–1000 restent inchangés.
 
 ## Littérature citée
 
@@ -21,7 +21,7 @@ Ces publications motivent le problème ; leurs chiffres ne sont pas présentés 
 ## Ressources visuelles et logicielles
 
 - Illustration originale générée : voir assets/PROVENANCE.md.
-- Schéma : skill Stack Diagram, pictogrammes Lucide (ISC), sans revendication de logos officiels des modèles. Crédit dans le HTML autonome.
+- Schéma : pictogrammes Lucide (ISC), sans revendication de logos officiels des modèles. Crédit dans le HTML autonome.
 - Reveal.js 5.2.1 : licence MIT conservée dans vendor/LICENSE-reveal.
 - Raleway et Lato : licences OFL conservées dans assets/.
 

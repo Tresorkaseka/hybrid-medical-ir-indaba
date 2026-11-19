@@ -26,8 +26,4 @@ Puis http://127.0.0.1:8790/index.html . Droite/gauche révèlent ou masquent les
 
 `NOTES.md` et notes intégrées dans chaque slide. `SOURCES.md` précise les résultats et les références. Les exemples d’explication sont fictifs ; les vrais scores proviennent des JSON conservés dans data/.
 
-## Régénérer le PDF
-
-`python3 scripts/export_pdf.py` depuis ce dossier, avec Playwright/Chromium disponible. Le script dérive `print.html` des mêmes sections et données et produit 29 pages paysage.
-
 BGE exécuté, récupéré et évalué. RTX 3050, français, radiologie et déploiement hospitalier restent non validés. Les calculs de cette version sont terminés.

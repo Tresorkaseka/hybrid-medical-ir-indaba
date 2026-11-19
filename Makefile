@@ -44,17 +44,6 @@ evaluate-a:      ## étape 4c : évalue le témoin BM25 et la configuration A (r
 embedding-sample: ## étape 5a : 500 essais tirés au hasard pour le test d'encodage sur Colab
 	(ulimit -v 9500000; IR_DATASETS_HOME=data/raw/ir_datasets $(PY) -W ignore experiments/exp1_trec_ct/07_make_embedding_sample.py)
 
-STACK_DIAGRAM ?= $(HOME)/.claude/skills/stack-diagram
-FIG_ICONS     := data/processed/figure-icons
-FIG_PY        ?= python3
-figures:          ## figures d'architecture (skill stack-diagram, commit 1ed53e3) : HTML + PNG dans paper/figures
-	python3 $(STACK_DIAGRAM)/scripts/fetch_icons.py $(FIG_ICONS) sqlite qdrant google "query:lucide/file-search" "split:lucide/split" "corpus:lucide/database" "pool:lucide/combine" "decision:lucide/scale" "topk:lucide/list-ordered" "table:lucide/table-2" "bm25:lucide/text-search"
-	cd paper/figures && python3 make_paper_fig.py
-	for n in architecture architecture-fr architecture-paper architecture-paper-fr; do \
-	  python3 $(STACK_DIAGRAM)/scripts/build.py paper/figures/$$n.src.html $(FIG_ICONS) paper/figures/$$n.html --fonts $(STACK_DIAGRAM)/assets/fonts || exit 1; done
-	for n in architecture architecture-fr; do $(FIG_PY) $(STACK_DIAGRAM)/scripts/render_png.py paper/figures/$$n.html paper/figures/$$n.png --selector .canvas --scale 2 || exit 1; done
-	for n in architecture-paper architecture-paper-fr; do $(FIG_PY) $(STACK_DIAGRAM)/scripts/render_png.py paper/figures/$$n.html paper/figures/$$n.png --selector .canvas --scale 3 --single || exit 1; done
-
 search-inputs:    ## étape 5c : requêtes et masques du filtre SQL à envoyer dans Colab (recherche B et C)
 	$(PY) -W ignore experiments/exp1_trec_ct/08_make_search_inputs.py
 
@@ -64,9 +53,6 @@ decision-inputs:  ## top-50 B/C et benchmark 24 paires pour le modèle de décis
 
 evaluate-semantic: ## étape 5d : évalue B et C face à BM25 et A (classements venus de Colab, recoupés avec ir_measures)
 	$(PY) -W ignore experiments/exp1_trec_ct/09_evaluate_semantic.py
-
-docs-pdf:         ## PDF « Reproductibilité et choix » (à régénérer à chaque étape)
-	$(PY) docs/build_reproducibilite.py
 
 decision-notebook: ## reconstruit le carnet de test depuis la bibliothèque et le SHA256 du benchmark (après decision-inputs)
 	$(PY) notebooks/build_decision_benchmark.py

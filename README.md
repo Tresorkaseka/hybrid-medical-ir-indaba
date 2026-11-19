@@ -97,7 +97,7 @@ Ouvrir <http://127.0.0.1:8790/>. Les dépendances Reveal.js sont incluses ; le P
 
 L’étude est rétrospective, sur des jugements TREC incomplets. Les règles démographiques ont été développées sur les mêmes 125 requêtes. Le test de fautes comporte un seul tirage synthétique imbriqué à 5 % et 10 %, pour BM25/A/B/C seulement. Il n’y a ni calibration clinique, ni évaluation hospitalière, ni mesure en français. IU Chest X-ray, la recherche texte–image et l’exécution locale sur RTX 3050 restent des perspectives.
 
-L’audit local comporte **591 contrôles de cohérence**. Le vérificateur public effectue un contrôle distinct des fichiers distribués ; le rejeu complet nécessite la reconstruction des entrées TREC. Deux thèmes bibliographiques et les consignes de soumission restent à finaliser. Les PDF sont des manuscrits de travail, pas une publication évaluée par les pairs.
+Les PDF sont des manuscrits de recherche en cours de finalisation. Le protocole, les résultats détaillés et les limites sont documentés dans ce dépôt.
 
 ## English summary
 

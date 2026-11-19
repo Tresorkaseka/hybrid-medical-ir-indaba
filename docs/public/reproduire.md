@@ -2,7 +2,7 @@
 
 ## 1. Vérifier la publication, sans données ni GPU
 
-Depuis la racine, `python3 scripts/verify_public_release.py` contrôle les empreintes du manifeste public et les moyennes/Holm du rapport. Il ne télécharge rien et ne relance aucune inférence. Ce contrôle n’est pas l’audit complet de 591 contrôles : celui-ci a été exécuté avec les entrées locales originales, rapport conservé sous `results/indaba_coherence_audit.json`.
+Depuis la racine, `python3 scripts/verify_public_release.py` contrôle les empreintes du manifeste public et les moyennes/Holm du rapport. Il ne télécharge rien et ne relance aucune inférence.
 
 Installation de test :
 
@@ -37,10 +37,9 @@ Après reconstruction des entrées :
 python experiments/exp1_trec_ct/11_make_decision_rankings.py --checkpoint results/eos-v2-raw/scores-07340.jsonl --provenance results/eos-v2-raw/provenance.json
 python experiments/exp1_trec_ct/13_make_control_rankings.py --checkpoint results/bge-control-raw/scores_logits-07340.jsonl --provenance results/bge-control-raw/provenance.json
 python -W ignore experiments/exp1_trec_ct/12_evaluate_decision.py --controls results/exp1_rankings_bge_controls.json.gz
-python scripts/audit_indaba.py
 ```
 
-Les scripts exigent l’empreinte des entrées et des pools originaux ; ne pas contourner un échec de provenance. L’audit complet attend aussi les sources article et présentation incluses. Le rejeu complet de ces commandes depuis un téléchargement neuf n’a pas été exécuté pendant la publication ; l’audit original a été vérifié sur les entrées conservées.
+Les scripts exigent les empreintes des entrées et des pools originaux pour éviter de mélanger des expériences. Le rejeu complet depuis un téléchargement neuf n’a pas été testé ; les résultats fournis proviennent des entrées figées décrites dans les fichiers de provenance.
 
 ## 4. Refaire l’inférence
 
@@ -50,6 +49,4 @@ Respecter modèles, révisions, questions, gabarits et empreintes. Les petites a
 
 ## Supports
 
-Articles : `latexmk -pdf main.tex` puis `latexmk -pdf main_fr.tex` depuis `paper/`. Poster : LuaLaTeX avec fontspec, Lato et Raleway, ou Tectonic depuis `poster/` (`tectonic --keep-logs main.tex`). Le PDF livré a été compilé avec Tectonic existant ; LuaLaTeX est présent localement mais son module luaotfload manque, ce qui empêche de valider cette voie ici. Les PDF précompilés sont inclus. LaTeX, polices et outils graphiques sont des dépendances distinctes de l’installation Python.
-
-Slides : serveur HTTP local sur `presentation/`. Le PDF de secours est inclus ; ce n’est pas un fichier PowerPoint éditable.
+Les PDF des articles, du poster et des slides sont fournis avec leurs sources. Les slides animées se consultent en servant le dossier `presentation/`, comme indiqué dans le README.

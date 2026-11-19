@@ -27,4 +27,4 @@ Bruit sur les mots alphabétiques des requêtes uniquement, 5 % et 10 %, un seul
 
 ## Ouvert
 
-Compléter deux thèmes bibliographiques dans les manuscrits et vérifier les consignes de soumission. Étudier français, calibration, conditions hospitalières, données privées, exécution locale et recherche texte–image. IU Chest X-ray et RTX 3050 ne sont pas évalués ici.
+Étudier français, calibration, conditions hospitalières, données privées, exécution locale et recherche texte–image. IU Chest X-ray et RTX 3050 ne sont pas évalués ici.
