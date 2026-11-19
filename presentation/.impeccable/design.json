@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-18T17:23:39.865382+00:00",
+  "title": "Design System: Filtrer, retrouver, décider — présentation",
+  "extensions": {
+    "surface": {
+      "mode": "Read",
+      "supportingExperience": "Consultation récurrente en silhouettes ; la preuve scientifique conserve la priorité.",
+      "canvas": {
+        "width": 1280,
+        "height": 720,
+        "slideCount": 29
+      },
+      "scope": "presentation/",
+      "mainSlideCount": 27,
+      "appendixSlideCount": 2,
+      "duration": "20–25 minutes",
+      "screenPositioning": ".reveal.ready .slides > section: absolute",
+      "pdfPositioning": "html.print-pdf .reveal.ready .slides > section: relative"
+    },
+    "shadows": [
+      {
+        "name": "word-shadow",
+        "value": "5px 6px #e4e4e4",
+        "purpose": "Verbes de rôles uniquement."
+      },
+      {
+        "name": "bar-shadow",
+        "value": "3px 4px 0 #ededed",
+        "purpose": "Traces sous les barres."
+      }
+    ],
+    "motion": [
+      {
+        "name": "slide-transition",
+        "value": "slide / default",
+        "purpose": "Transition native Reveal ; none en mouvement réduit, préférence suivie dynamiquement."
+      },
+      {
+        "name": "fragment-arrival",
+        "value": "320ms cubic-bezier(.16,1,.3,1); translateY(16px) → 0",
+        "purpose": "Fragments fade-up au clic."
+      },
+      {
+        "name": "bar-reveal",
+        "value": "650ms cubic-bezier(.16,1,.3,1); scaleX(0) → 1",
+        "purpose": "Barres après révélation du groupe annuel."
+      },
+      {
+        "name": "shadow-arrival",
+        "value": "650ms cubic-bezier(.16,1,.3,1); translateX(22px) → 0; opacity .65 → 1",
+        "purpose": "Silhouette à l’arrivée de la diapositive ; désactivée en mouvement réduit."
+      }
+    ],
+    "breakpoints": [],
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Encre",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Lecture secondaire",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Papier",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Trait",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "emphasis": {
+        "role": "neutral",
+        "displayName": "Emphase",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "bar": {
+        "role": "neutral",
+        "displayName": "Barre",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "bar-axis": {
+        "role": "neutral",
+        "displayName": "Axe",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "shadow-word": {
+        "role": "neutral",
+        "displayName": "Ombre de mot",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      },
+      "shadow-bar": {
+        "role": "neutral",
+        "displayName": "Ombre de barre",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(26% 0 0)",
+          "oklch(38% 0 0)",
+          "oklch(49% 0 0)",
+          "oklch(61% 0 0)",
+          "oklch(72% 0 0)",
+          "oklch(84% 0 0)",
+          "oklch(95% 0 0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Ouverture",
+        "purpose": "Titre initial."
+      },
+      "headline": {
+        "displayName": "Conclusion de diapositive",
+        "purpose": "Hiérarchie scientifique principale."
+      },
+      "body": {
+        "displayName": "Lecture",
+        "purpose": "Explications en Lato."
+      },
+      "takeaway": {
+        "displayName": "Synthèse pédagogique",
+        "purpose": "Conclusion en 21pt/1.35 ; variante bibliographique locale en 20pt."
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Colonne métrique",
+      "kind": "custom",
+      "refersTo": "metric-column",
+      "description": "Grand nombre suivi de sa signification.",
+      "html": "<article class=\"ds-metric\"><p class=\"ds-value\">125</p><p class=\"ds-caption\">descriptions de patients</p></article>",
+      "css": ".ds-metric{border-top:2px solid var(--ink,#171717);padding-top:20px;color:var(--ink,#171717);width:300px}.ds-value{font:700 45pt/1.1 Raleway,Arial,sans-serif;letter-spacing:-2px;margin:0 0 18px}.ds-caption{font:19pt/1.4 Lato,Arial,sans-serif;color:var(--muted,#595959);margin:0}"
+    },
+    {
+      "name": "Ligne de configuration E",
+      "kind": "custom",
+      "refersTo": "evidence-row-highlight",
+      "description": "Ligne d’ablation mise en avant.",
+      "html": "<table class=\"ds-table\"><tbody><tr><td>E</td><td>Sémantique</td><td>SQL</td><td>Eos · top 50</td></tr></tbody></table>",
+      "css": ".ds-table{width:100%;border-collapse:collapse;font:20pt/1.4 Lato,Arial,sans-serif;color:var(--ink,#171717)}.ds-table tr{background:#f1f1f1}.ds-table td{padding:10px 18px 10px 0;border-bottom:1px solid var(--line,#c8c8c8)}"
+    },
+    {
+      "name": "Note de marge",
+      "kind": "custom",
+      "refersTo": "margin-note",
+      "description": "Distingue le mesuré de ce qui reste à établir.",
+      "html": "<aside class=\"ds-note\"><h3>Ce qui reste à mesurer</h3><p>VRAM, latence et qualité sur une machine locale.</p></aside>",
+      "css": ".ds-note{border-left:2px solid var(--line,#c8c8c8);padding-left:32px;color:var(--ink,#171717)}.ds-note h3{font:700 19pt/1.2 Raleway,Arial,sans-serif;letter-spacing:-.5px;margin:5px 0 0}.ds-note p{font:18pt/1.4 Lato,Arial,sans-serif;margin:16px 0}"
+    },
+    {
+      "name": "Barre comparateur",
+      "kind": "custom",
+      "refersTo": "chart-bar",
+      "description": "Valeur sur un domaine partagé de 0 à 0,5.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-label\">C</span><div class=\"ds-track\"><div class=\"ds-bar\"></div></div><span class=\"ds-result\">0,423</span></div>",
+      "css": ".ds-row{display:flex;align-items:center;gap:14px;height:48px;font:16pt Lato,Arial,sans-serif;color:var(--ink,#171717)}.ds-label{width:55px}.ds-track{flex:1;height:23px;border-left:1px solid #999}.ds-bar{height:23px;width:84.6%;background:#a4a4a4;box-shadow:3px 4px 0 #ededed}.ds-result{width:62px;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Barre E",
+      "kind": "custom",
+      "refersTo": "chart-bar-final",
+      "description": "Valeur sur un domaine partagé de 0 à 0,5.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-label\">E</span><div class=\"ds-track\"><div class=\"ds-bar\"></div></div><span class=\"ds-result\">0,479</span></div>",
+      "css": ".ds-row{display:flex;align-items:center;gap:14px;height:48px;font:16pt Lato,Arial,sans-serif;color:var(--ink,#171717)}.ds-label{width:55px}.ds-track{flex:1;height:23px;border-left:1px solid #999}.ds-bar{height:23px;width:95.8%;background:var(--ink,#171717);box-shadow:3px 4px 0 #ededed}.ds-result{width:62px;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Exemple de décision compact",
+      "kind": "custom",
+      "description": "Exemple fictif séparé des mesures.",
+      "html": "<div class=\"ds-example\"><p class=\"ds-question\">Cet essai mérite-t-il un examen ?</p><p>Exemple fictif : lire la paire patient–essai avant de reclasser.</p></div>",
+      "css": ".ds-example{border-top:2px solid var(--ink,#171717);border-bottom:1px solid var(--line,#c8c8c8);padding:10px 0;margin-bottom:24px;color:var(--ink,#171717)}.ds-example p{font:19pt/1.3 Lato,Arial,sans-serif;margin:12px 0}.ds-example .ds-question{font-size:26pt}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le théâtre des preuves",
+    "overview": "Le théâtre des preuves : une consultation en ombres chinoises accompagne une lecture scientifique sobre. Le fond blanc, les caractères noirs et les silhouettes récurrentes rapprochent les résultats de leur besoin humain sans transformer le classement algorithmique en décision clinique.\n\nLe mode de surface est **Read** : les titres annoncent une conclusion, les tableaux et graphiques portent les preuves, les notes visibles en précisent les limites. La mise en scène de type Experience reste un soutien visuel ; elle ne remplace jamais la lecture des données.",
+    "keyCharacteristics": [
+      "Blanc pur et gris neutres, sans accent chromatique.",
+      "Raleway pour la hiérarchie, Lato pour les explications.",
+      "La même médecin et le même patient comme fil conducteur.",
+      "Architecture par fonctions, résultats assortis de limites.",
+      "Présentation fixe, polices et dépendances locales."
+    ],
+    "rules": [
+      {
+        "name": "The Evidence Rule",
+        "body": "Une différence de moyenne reste distincte d’un résultat statistique concluant ; les limites accompagnent le résultat concerné.",
+        "section": "typography"
+      },
+      {
+        "name": "The Same Consultation Rule",
+        "body": "Réutiliser la même illustration de consultation pour ouvrir, rappeler le besoin et conclure.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Function First Rule",
+        "body": "Le schéma d’architecture expose le parcours et le rôle des composants avant leurs noms de modèles.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do conserver le mode Read et les limites scientifiques visibles.",
+      "Do garder les fontes, Reveal et les illustrations dans les assets locaux.",
+      "Do conserver le même patient et la même médecin dans les scènes récurrentes.",
+      "Do donner aux tableaux, aux barres et aux nombres un rôle de preuve explicite.",
+      "Do préserver l’ordre des rangs 51–1000 et le périmètre top 50 dans toute représentation du pipeline."
+    ],
+    "donts": [
+      "Don't suggérer une décision clinique automatisée ou une validation clinique.",
+      "Don't présenter BGE, le GPU local ou l’imagerie comme des résultats mesurés.",
+      "Don't utiliser la hauteur des barres comme preuve de significativité.",
+      "Don't remplacer les symboles fonctionnels du schéma par des logos de modèles."
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "file": "Raleway-Regular.ttf",
+    "wght": 400,
+    "derived_from": "Raleway[wght].ttf",
+    "fonttools": "4.68.0",
+    "sha256": "96c31d08ff737f0ae154c2039b1341e1cbec83db9440198ddd15f48c475b6773"
+  },
+  {
+    "file": "Raleway-Bold.ttf",
+    "wght": 700,
+    "derived_from": "Raleway[wght].ttf",
+    "fonttools": "4.68.0",
+    "sha256": "e589075d2b6ecdebe4d0b222d5d2d71ddca8a3f0fb8f99f5a8bedf29aea951a4"
+  }
+]

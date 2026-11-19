@@ -1,0 +1,7 @@
+{
+  "input_sha256": "42988327922fcc5d1cc0c7f5431d531fae441265dc0111fbc9c813c766ff1bd8",
+  "model_id": "vllm-sr/Decision-2.0-Eos-0.8B",
+  "revision": "52cad37ef21f598302fe964cbfa164739cb965d5",
+  "prompt_sha256": "bf7a2afc311cddd2f281bace4eea3ba175a005adc5f131b0e3ec5d5141fca91f",
+  "code_sha256": "1b705a9c0bcf12f7f43a9363f079f75235c2378b4eaa9e962aa8437f7468ea34"
+}

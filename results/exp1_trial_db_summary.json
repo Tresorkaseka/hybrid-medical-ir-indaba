@@ -1,0 +1,27 @@
+{
+  "n_trials": 375580,
+  "gender": {
+    "None": 863,
+    "All": 320948,
+    "Female": 36496,
+    "Male": 17273
+  },
+  "accepts_healthy_volunteers": {
+    "None": 7899,
+    "0": 272139,
+    "1": 95542
+  },
+  "phase": {
+    "None": 82931,
+    "Early Phase 1": 3616,
+    "N/A": 127333,
+    "Phase 1": 34719,
+    "Phase 1/Phase 2": 11816,
+    "Phase 2": 48204,
+    "Phase 2/Phase 3": 5725,
+    "Phase 3": 33131,
+    "Phase 4": 28105
+  },
+  "missing_min_age": 30951,
+  "missing_max_age": 179861
+}

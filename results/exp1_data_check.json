@@ -1,0 +1,32 @@
+{
+  "ir_datasets_version": "0.6.3",
+  "n_docs": 375580,
+  "n_unique_doc_ids": 375580,
+  "n_queries_2021": 75,
+  "n_queries_2022": 50,
+  "qrels_2022_source": "https://trec.nist.gov/data/trials/qrels2022.txt",
+  "qrels_2022_bytes": 666030,
+  "qrels_2022_sha256": "e569a531489e03f7b1fab03fe169c8ea66f4a59e8180fa9858b1a6e4bdcb0c5c",
+  "qrels_2021": {
+    "n_judgments": 35832,
+    "n_topics": 75,
+    "n_judged_docs_unique": 26162,
+    "by_level": {
+      "excluded": 6019,
+      "not_relevant": 24243,
+      "eligible": 5570
+    },
+    "judged_docs_missing_from_corpus": 0
+  },
+  "qrels_2022": {
+    "n_judgments": 35394,
+    "n_topics": 50,
+    "n_judged_docs_unique": 26585,
+    "by_level": {
+      "not_relevant": 28419,
+      "excluded": 3036,
+      "eligible": 3939
+    },
+    "judged_docs_missing_from_corpus": 0
+  }
+}

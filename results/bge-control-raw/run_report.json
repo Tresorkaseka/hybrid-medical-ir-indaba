@@ -1,0 +1,22 @@
+{
+  "status": "complete",
+  "n_pairs": 7340,
+  "n_saved": 7340,
+  "n_reused": 0,
+  "wall_seconds_this_session": 500.61035891200004,
+  "peak_cuda_bytes": 1280407040,
+  "provenance": {
+    "input_sha256": "42988327922fcc5d1cc0c7f5431d531fae441265dc0111fbc9c813c766ff1bd8",
+    "model_id": "BAAI/bge-reranker-v2-m3",
+    "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+    "preprocessing_sha256": "dce4b8b91a09e99d2e9ca45ced68346ba9e6a953ee4e3592767f38396797afb5",
+    "code_sha256": "54b827ac75407e3c697a766882aef553178e16bd326cf9fe77b60f378b7c36f1",
+    "dtype": "float16",
+    "transformers": "5.22.1",
+    "torch": "2.14.1+cu130",
+    "attention_implementation": "sdpa",
+    "batch_size": 1
+  },
+  "score_kind": "logit",
+  "truncation": false
+}

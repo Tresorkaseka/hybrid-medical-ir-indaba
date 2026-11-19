@@ -1,0 +1,333 @@
+\documentclass{article}
+
+% Version française de main.tex. Même gabarit que « Attention Is All You Need » (style NIPS 2017).
+% [final] affiche le bloc auteur ; à retirer pour une soumission anonyme.
+\usepackage[final]{nips_2017}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds}
+
+% Intitulés en français (le paquet babel-french n'est pas installé).
+\renewcommand{\figurename}{Figure}
+\renewcommand{\tablename}{Tableau}
+\renewcommand{\refname}{Références}
+\makeatletter
+\renewenvironment{abstract}{%
+  \vskip 0.075in
+  \centerline{\large\bf Résumé}
+  \vspace{0.5ex}
+  \begin{quote}}{\par\end{quote}\vskip 1ex}
+\makeatother
+
+% Valeur qui n'existera qu'après les expériences.
+\newcommand{\tbd}{\textcolor{gray}{--}}
+% Note visible pour les parties inachevées. À retirer avant soumission.
+\newcommand{\todo}[1]{\textcolor{orange}{[À FAIRE : #1]}}
+
+\title{Filtrer, retrouver, décider : étude contrôlée d'architectures hybrides de recherche d'informations médicales}
+
+\author{
+  Kaseka Mwavingi Tresor \\
+  Université Nouveaux Horizons \\
+  République démocratique du Congo \\
+  \texttt{tresormwavingi@gmail.com}
+}
+
+\begin{document}
+
+\maketitle
+
+% ---------------------------------------------------------------------------
+\begin{abstract}
+Nous étudions le filtrage structuré, la recherche sémantique et le reclassement par modèle de décision sur 125 requêtes TREC Clinical Trials 2021--2022 et 375\,580 essais. Le filtre âge/sexe SQLite précède une recherche cosinus exacte avec EmbeddingGemma~2 à 768 dimensions ; Decision~2.0 Eos~0.8B reclasse les 50 premiers résultats en conservant les rangs 51--1000. La recherche sémantique atteint un nDCG@10 de 0,396/0,411 (2021/2022), contre 0,275/0,254 pour BM25. Le filtrage suivi de la recherche sémantique atteint 0,413/0,423 ; Eos porte ces moyennes à 0,415/0,479. Ces écarts de reclassement ne sont pas concluants en nDCG@10 après la correction de Holm prospective à 99 tests ; P@20 et R@20 progressent les deux années. Le calcul des 7\,340 paires distinctes prend 91,80 minutes sur Colab T4, sauvegardes comprises. Le bruit synthétique d'orthographe n'est évalué que pour BM25 et A--C. Le témoin BGE atteint 0,393/0,420 avec filtre ; Eos garde des moyennes plus élevées, mais sans écart nDCG@10 concluant après correction. Le rappel au rang 20 de E dépasse celui du témoin les deux années. Les données sont publiques et en anglais ; calibration clinique et IU Chest X-ray restent hors du périmètre mesuré.
+\end{abstract}
+
+% ---------------------------------------------------------------------------
+\section{Introduction}
+
+Un système d'information hospitalier stocke deux types de contenu. Le premier est structuré : l'âge d'un patient, son sexe, les dates d'admission, les diagnostics codés et les valeurs biologiques, généralement rangés dans des tables relationnelles. Le second est non structuré : notes cliniques, comptes rendus d'hospitalisation, comptes rendus de radiologie et les images qu'ils décrivent. Cliniciens et chercheurs posent rarement des questions qui relèvent d'un seul type. Une demande comme « les femmes de moins de cinquante ans atteintes d'insuffisance cardiaque dont la radiographie thoracique montre des signes proches de celle-ci » contient une contrainte exacte, un concept clinique pouvant s'exprimer de bien des façons, et un exemple visuel.
+
+SQL répond avec précision et reproductibilité à la partie exacte d'une telle requête. Il ne capte pas le sens : une recherche sur « insuffisance cardiaque » ne retrouvera pas un compte rendu qui parle de « décompensation cardiaque avec dysfonction ventriculaire ». La recherche dense représente textes et images par des vecteurs, de sorte que les contenus de sens proche se retrouvent voisins. Elle résout le problème du vocabulaire, mais ne garantit pas qu'une contrainte stricte soit respectée : un vecteur ne peut pas promettre qu'un patient a moins de cinquante ans.
+
+Une troisième option est apparue en 2026 avec les modèles de décision, que TypeSafe nomme modèles System One~\citep{typesafe2026}. Au lieu de générer du texte, ces modèles lisent un contexte et renvoient la réponse typée à une question fermée, accompagnée d'une probabilité, par exemple pour dire si un document candidat est pertinent pour une requête. Plusieurs modèles à poids ouverts suivent désormais le même contrat~\citep{systemonealternatives}, et plusieurs existent en tailles assez petites pour tenir sur un seul GPU de 16~Go. Des travaux récents ont évalué des modèles de décision sur des questions médicales, sur la factualité de comptes rendus de radiologie et sur des dossiers cliniques privés \todo{citer 2610.18529, 2609.27607, 2610.27099 après lecture complète}. À notre connaissance, ils n'ont pas été testés comme rerankers sur des benchmarks de recherche publics, avec les métriques standard de la recherche d'information et face à des rerankers classiques.
+
+Cet article demande si ces trois composants sont complémentaires en pratique, et pour quels types de requêtes. Nous ne supposons pas qu'ajouter des composants aide. Chaque couche est ajoutée une à une et comparée à des références plus simples, dont un témoin fondé sur un reranker classique, pour distinguer l'apport du modèle de décision de celui du reclassement seul. Beaucoup de systèmes de santé de notre région disposent d'un matériel limité et peuvent ne pas être en mesure d'envoyer des données de patients à des services externes. Nous nous limitons donc à des modèles à poids ouverts assez petits pour un seul GPU modeste, et nous mesurons la latence, la mémoire et le coût de calcul. Nos expériences utilisent des données publiques et un GPU loué dans le cloud ; elles ne démontrent donc pas à elles seules un déploiement sur site.
+
+L'expérience principale isole le filtrage âge/sexe, la recherche lexicale, la recherche sémantique et le reclassement ponctuel sur deux ensembles annuels de sujets TREC à jugements d'experts. Nous rapportons BM25, A--E et les témoins BGE sur les mêmes pools de 50 candidats. Une extension radiologique et un éventuel essai de Sol sont hors du périmètre mesuré de cette version.
+
+% ---------------------------------------------------------------------------
+\section{Travaux connexes}
+\label{sec:related}
+
+\paragraph{Appariement patient--essai.} La campagne TREC Clinical Trials définit la tâche utilisée dans notre expérience principale : à partir de la description d'un patient, classer des essais de ClinicalTrials.gov, avec des jugements « éligible », « exclu » et « non pertinent »~\citep{roberts2022trecct}. Le meilleur système de 2021 combinait une quarantaine de courtes requêtes synthétiques, soumises à BM25 et fusionnées par fusion de rangs réciproque, avec un reranker monoT5 entraîné sur les jugements d'une autre collection, et a atteint 0,7118 de nDCG@10~\citep{pradeep2022nqs}. La même étude montre qu'un reranker utilisé sans entraînement n'aide pas toujours : au-dessus d'un premier étage à 0,4726, les variantes sans entraînement allaient de 0,2311 à 0,4715 selon les parties de l'essai qu'elles lisaient, et la meilleure lisait les critères d'éligibilité. TrialGPT demande à un grand modèle de langage de juger chaque critère d'éligibilité, puis agrège les réponses en un score d'essai, avec un étage de recherche hybride BM25 et MedCPT ; il atteint environ 0,73 de nDCG@10 avec GPT-4~\citep{jin2024trialgpt}. Son corpus est réduit aux essais jugés de chaque cohorte, et ses auteurs précisent que les scores ne sont pas comparables à ceux des participants TREC. Il dépend aussi d'une API fermée. Nous nous en distinguons de deux façons : nous n'utilisons que des modèles à poids ouverts, et nous comparons des configurations par ablation au lieu de présenter un seul système.
+
+\paragraph{Recherche dans les dossiers cliniques et les données structurées.} CliniQ, un benchmark public construit sur des comptes rendus d'hospitalisation, trouve que BM25 est une référence solide, que les modèles denses généralistes dépassent les modèles biomédicaux, et que la fusion des résultats lexicaux et denses améliore le rappel et le MRR~\citep{zhao2025cliniq}. MedCPT a été entraîné sur 255 millions de clics de recherche PubMed et a atteint l'état de l'art en zéro-shot sur la recherche de littérature biomédicale~\citep{jin2023medcpt} ; son comportement sur les dossiers cliniques et les fiches d'essais est moins tranché, puisque TrialGPT le juge bien meilleur que BM25 sur les essais alors que CliniQ place les modèles généralistes devant sur les dossiers. Pour les données structurées, EHRSQL évalue la traduction de questions d'hôpital en SQL~\citep{lee2022ehrsql}. Nous ne traduisons pas les questions avec un analyseur appris : une décomposition par règles garde l'effet de chaque composant séparé de l'effet d'un analyseur. \todo{citer les participants TREC qui filtrent sur l'âge et le sexe, après lecture de leurs articles.}
+
+\paragraph{Modèles de décision.} Les modèles de décision répondent à des questions fermées par une probabilité, sans générer de texte. En médecine, ils n'ont été évalués jusqu'ici que comme répondeurs et comme juges. Une comparaison de 23 configurations de modèles sur 15 jeux de données médicaux a constaté que Jev égale les meilleurs modèles sur les tâches surtout textuelles, qu'il est plus faible sur les tâches numériques, et qu'un modèle ouvert, D3-27B, a obtenu la meilleure précision ; l'abstention était faible pour la plupart des modèles~\citep{du2026reliable}. Jev a aussi servi à juger la cohérence factuelle de comptes rendus de radiologie générés~\citep{huang2026jevradiology}. CS1, entraîné sur des dossiers hospitaliers, trie des patients pour 17 essais et atteint 0,64 de nDCG@20 contre 0,11 pour BM25, mais ses étiquettes de pertinence viennent d'un modèle de langage, ses données d'entraînement sont privées et ses poids ne sont pas encore publiés~\citep{zhang2026cs1}. Hors médecine, des modèles de décision ont été utilisés comme rerankers. Une seule question à choix multiple sur 16 candidats a amélioré un système de recherche de premier étage (76,76 contre 74,85 en hit@1), alors qu'une question oui ou non par candidat est tombée en dessous (69,50), et les plus petits modèles Gemma 4 ont dégradé le premier étage~\citep{liu2026multimodalrerank}. En recommandation, Jev s'est montré compétitif avec une latence inférieure à celle de rerankers à base de modèles de langage plus puissants, et le score agrégé masquait de grands changements dans les résultats individuels lorsque l'ordre des candidats changeait~\citep{lyu2026decisionrerank}. À notre connaissance, ces modèles n'ont pas été testés comme rerankers sur des benchmarks publics de recherche médicale face à des rerankers classiques.
+
+\paragraph{Recherche d'images et de textes médicaux.} BiomedCLIP, entraîné sur 15 millions de paires figure--légende de PubMed Central, est la référence pour les embeddings biomédicaux d'images et de textes~\citep{zhang2023biomedclip}. Utilisé sans entraînement pour la recherche d'images radiologiques, il a atteint une précision au rang 1 de 0,594 lorsque la pertinence signifiait appartenir à la même classe~\citep{denner2025cbir}. Retrouver exactement le compte rendu apparié est bien plus difficile : sur la collection Open-I, le meilleur modèle CXR-CLIP retrouve le bon compte rendu dans les 10 premiers dans 12,3\,\% des cas~\citep{you2023cxrclip}. Une pertinence fondée sur des étiquettes radiologiques partagées constitue une extension possible ; aucune expérience radiologique ne figure dans la présente évaluation. Nous n'avons trouvé aucune évaluation d'EmbeddingGemma~2 sur la recherche médicale.
+
+\paragraph{Lacune.} Nous n'avons trouvé aucune étude qui évalue ensemble, par ablation, le filtrage structuré, la recherche sémantique et un modèle de décision sur des benchmarks médicaux publics à jugements d'experts. Notre recherche s'est appuyée sur un moteur de recherche et arXiv, non sur PubMed ni Google Scholar ; cette affirmation vaut donc au mieux de notre connaissance.
+
+% ---------------------------------------------------------------------------
+\section{Méthode}
+\label{sec:method}
+
+\begin{figure}[t]
+  \centering
+  \fbox{\parbox{0.92\linewidth}{\small
+  La description du patient alimente les règles âge/sexe et l'encodeur sémantique. SQLite produit un masque d'essais autorisés. La recherche cosinus exacte sur les vecteurs fixes du corpus applique ce masque et fournit C. Eos note chacune des 50 premières paires patient--essai ; ces 50 essais sont triés par la probabilité d'éligibilité renvoyée, les égalités conservant l'ordre initial. Les rangs 51--1000 gardent l'ordre de C.}}
+  \caption{Description opérationnelle de la configuration E. D applique le même reclassement à B, sans masque SQL. A est une référence BM25 filtrée distincte, et non une liste fusionnée dans E.}
+  \label{fig:architecture}
+\end{figure}
+
+\paragraph{Vue d'ensemble.} La figure~\ref{fig:architecture} décrit le pipeline implémenté. Les règles extraient l'âge et le sexe du patient sans retirer de mots de la description utilisée pour la recherche. Dans A, SQLite filtre le corpus et BM25 classe les essais autorisés. Dans B, EmbeddingGemma~2 encode la description complète et la similarité cosinus exacte classe les vecteurs du corpus entier. C applique le masque SQLite âge/sexe à cette même recherche vectorielle. Il ne fusionne pas les listes BM25 et sémantique. D et E reclassent les 50 premiers candidats de B et C, respectivement. Aucun index vectoriel approché, aucune fusion de rangs réciproque ni aucune image ne sont utilisés dans cette évaluation.
+
+\paragraph{Embeddings.} Nous utilisons la composante texte d'EmbeddingGemma~2 à 768 dimensions~\citep{embeddinggemma2}, révision \texttt{f9972ac}. Les essais contiennent les mêmes titre, conditions, résumé, description détaillée et critères d'éligibilité que l'index BM25. Le gabarit de document et le préfixe de requête de la fiche du modèle restent fixes. Les vecteurs du corpus sont calculés en float32, normalisés puis stockés en float16 ; la recherche les charge en float32 et calcule les scores cosinus exacts sur le corpus fixe, sans index approché. La fiche du modèle déconseille le calcul en float16 ; le format de stockage est distinct du format de calcul. Un test sur 500 essais a trouvé le calcul float32 plus rapide que le bfloat16 sur le T4. Aucune réduction de dimension ni aucun résultat multimodal ne font partie de cette étude.
+
+\paragraph{Modèle de décision.} D et E utilisent Decision~2.0 Eos~0.8B, révision \texttt{52cad37}, au format oui/non officiel.\footnote{Modèle et runtime figés : \url{https://huggingface.co/vllm-sr/Decision-2.0-Eos-0.8B/tree/52cad37ef21f598302fe964cbfa164739cb965d5}.} Pour chaque paire patient--essai, la requête fournit la description complète du patient, le texte complet de l'essai et une question fermée demandant si le patient est éligible au regard des critères d'inclusion et d'exclusion indiqués. Le runtime officiel utilise un réseau principal BF16 et une tête de décision FP32 sur GPU ; il n'est pas forcé en FP16. Son tokenizer et son encodeur sont vérifiés avant le calcul des scores, et les entrées ne sont pas tronquées silencieusement. La réponse \texttt{noul} sert de score de classement, et non de probabilité validée en clinique. Aucune calibration sur des résultats cliniques n'a été démontrée. Une même paire patient--essai partagée entre B et C n'est calculée qu'une fois, soit 7\,340 appels distincts au lieu de 12\,500 positions de pool ; aucun score n'est partagé entre des patients différents. Le protocole ponctuel n'évalue ni les questions par liste ni les rotations de candidats. Sol reste une extension optionnelle non mesurée.
+
+\paragraph{Témoin de reclassement classique.} BGE-reranker-v2-m3~\citep{chen2024bgem3}, révision \texttt{953dc6f}, est le seul témoin évalué.\footnote{Témoin figé : \url{https://huggingface.co/BAAI/bge-reranker-v2-m3/tree/953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e}.} D$'$ et E$'$ remplacent Eos sur les mêmes pools top~50 de B et C, avec les mêmes textes patient et essai. BGE renvoie des logits de pertinence non bornés, triés directement et non interprétés comme des probabilités Eos. Son conducteur Colab utilise FP16, enregistre la configuration du runtime et contrôle chaque paire de textes non tronqués contre la limite de 8\,192 tokens avant le calcul GPU. Il s'arrête en cas de dépassement ou d'erreur du modèle. Le calcul GPU complet et les résultats de qualité BGE sont validés localement.
+
+\paragraph{Taille du pool et plafond de rappel.} La taille du pool est fixée à $N=50$ avant la comparaison Eos. Chaque reranker trie de manière stable ces 50 candidats seulement ; les égalités conservent l'ordre du premier étage. Les rangs 51--1000 sont ajoutés sans changement, de sorte que la sortie reste un classement de 1\,000 documents. Un essai pertinent hors du pool ne peut pas entrer dans les 50 premiers grâce au reclassement, et le rappel à profondeur 1\,000 reste inchangé par construction. Le rappel moyen des essais jugés éligibles dans le pool à 50 est de 0,1595/0,1723 pour B et de 0,1797/0,1922 pour C (2021/2022). Le reclassement conserve ces pools ; ce rappel ne borne pas directement la nDCG graduée. Une exploration de plusieurs tailles de pool ne fait pas partie de cette version.
+
+% ---------------------------------------------------------------------------
+\section{Dispositif expérimental}
+\label{sec:setup}
+
+L'étude principale se limite à la recherche d'essais cliniques pour des patients décrits dans les sujets TREC Clinical Trials 2021 et 2022. Il s'agit de deux ensembles annuels de requêtes et de jugements sur le même corpus d'essais, et non de deux modalités différentes. Chaque requête est une description de patient et les essais éligibles sont les documents pertinents. Aucun dossier hospitalier privé ni aucune collection d'images n'entrent dans les expériences présentes.
+
+\subsection{Appariement patient--essai}
+
+Nous utilisons les sujets TREC Clinical Trials 2021 et 2022~\citep{roberts2021trecct}, chargés avec \texttt{ir\_datasets}~\citep{irdatasets}. Les requêtes sont 75 et 50 descriptions de patients en texte libre, rédigées par des cliniciens. Le corpus est l'instantané de ClinicalTrials.gov du 27 avril 2021 et contient 375\,580 essais tels que chargés avec \texttt{ir\_datasets} (le rapport TREC 2022 en indique 375\,581). Les jugements classent chaque essai comme non pertinent, exclu ou éligible ; en 2022, ils portent sur 35\,394 paires sujet--essai, obtenues par pooling à profondeur 40 sur 41 runs soumis~\citep{roberts2022trecct}. Le meilleur run de 2022, un reranker monoT5, a atteint 0,6125 de nDCG@10 et 0,7262 de MRR~\citep{roberts2022trecct}. Nous indexons le corpus complet. Nos scores restent seulement indicativement comparables aux scores officiels, car notre découpage en mots est plus simple que celui de la plupart des systèmes soumis (ni racinisation, ni mots vides) ; nous n'utilisons donc les chiffres officiels que comme points de repère. La branche structurée filtre sur l'âge minimal et maximal et sur le sexe acceptés par chaque essai, une borne absente n'imposant aucune contrainte ; l'âge et le sexe du patient sont extraits de la description par expressions régulières puis vérifiés à la main. Le texte d'un essai réunit son titre, ses conditions, son résumé, sa description détaillée et ses critères d'éligibilité. Le champ \texttt{condition} fourni par \texttt{ir\_datasets} est vide pour tous les essais ; les conditions sont donc lues dans les fichiers XML bruts, et 374\,720 essais en ont au moins une.
+
+
+
+\subsection{Configurations}
+
+\begin{table}[t]
+  \caption{Configurations de l'étude. BM25 et A--E sont mesurés et D$'$/E$'$ sont préparés mais non mesurés. Le témoin remplace Eos par BGE sur les mêmes pools.}
+  \label{tab:configs}
+  \centering
+  \small
+  \begin{tabular}{llp{0.52\linewidth}}
+    \toprule
+    Id & Configuration & Pipeline \\
+    \midrule
+    A & SQL + BM25 & Filtre SQL, puis BM25~\citep{robertson2009bm25} sur le sous-ensemble filtré \\
+    B & Sémantique seule & EmbeddingGemma~2, recherche cosinus exacte \\
+    C & SQL + sémantique & Recherche cosinus exacte restreinte par le masque SQL \\
+    D & Sémantique + décision & Top~50 de B, reclassement oui/non Eos \\
+    E & Complète & Top~50 de C, reclassement oui/non Eos \\
+    D$'$, E$'$ & Témoins rerankers & Top~50 de B et C, BGE-reranker-v2-m3~\citep{chen2024bgem3} \\
+    \midrule
+    \multicolumn{3}{l}{\emph{Référence lexicale}} \\
+    BM25 & Lexicale & BM25 sur tout le corpus, sans filtre \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Le tableau~\ref{tab:configs} liste les configurations. De A à C, le classement lexical est remplacé par un classement sémantique sous le même filtre SQL. De C à E et de B à D, on isole le reclassement ponctuel avec et sans filtre. D et E sont mesurés ; D$'$ et E$'$ restent non mesurés, Colab ayant refusé l'accès GPU à cause de la limite d'utilisation.
+
+\subsection{Métriques et analyse statistique}
+
+Nous rapportons Precision@K et Recall@K pour $K \in \{5, 10, 20\}$, la R-Precision, le rang réciproque moyen (MRR) et nDCG@10~\citep{jarvelin2002ndcg}. Pour TREC Clinical Trials, nous suivons l'évaluation officielle de TREC : nDCG utilise un gain gradué (éligible~=~2, exclu~=~1, non pertinent~=~0), et toutes les autres métriques ne comptent que les essais éligibles comme pertinents~\citep{roberts2022trecct}. Comme les jugements TREC proviennent de runs poolés, un système qui retrouve des essais qu'aucun participant n'avait retrouvés est noté comme si ces essais n'étaient pas pertinents. Nous rapportons donc Judged@10, la part des 10 premiers résultats qui portent un jugement, à côté de chaque score. Le rappel du pool est rapporté ci-dessus. La durée du calcul Eos complet est rapportée ci-dessous. Les temps d'inférence et le pic de mémoire GPU sont enregistrés séparément de la qualité de recherche. Aucune erreur de calibration attendue, aucun score de Brier ni aucun résultat de calibration clinique ne sont rapportés.
+
+Les différences sont testées requête par requête par Wilcoxon bilatéral apparié~\citep{wilcoxon1945}, avec correction de Holm~\citep{holm1979}. Avant lecture des scores D/E, nous avons fixé 11 paires et neuf métriques de qualité par année, soit 99 tests : B--BM25, A--BM25, C--B, C--A, D--B, E--C, E--D, D$'$--B, E$'$--C, D--D$'$ et E--E$'$. L'analyse complète observe les 99 tests, sans emplacement réservé ni imputation de scores témoins. Judged@10 reste descriptif. Les intervalles proviennent d'un bootstrap apparié sur les requêtes (10\,000 rééchantillonnages, graine 20261028). Les tableaux et conclusions statistiques utilisent désormais cette famille de 99 emplacements ; le rapport B/C historique à 36 tests est conservé séparément.
+
+\subsection{Robustesse aux fautes d'orthographe}
+
+Les requêtes réelles contiennent des fautes de frappe que les sujets TREC, relus, ne reflètent pas. Nous construisons un seul tirage synthétique avec la graine 20261117, en perturbant des fractions nominales $p \in \{5\,\%, 10\,\%\}$ des mots admissibles de chaque requête. Les mots admissibles sont les segments alphabétiques ASCII d'au moins deux lettres ; chiffres, espaces et ponctuation restent intacts. Chaque mot choisi subit une opération réalisable tirée au hasard : inversion de deux lettres voisines distinctes, suppression, insertion ou substitution d'une lettre. Les niveaux sont imbriqués : chaque mutation à 5\,\% apparaît aussi à 10\,\%. Le nombre de mots choisis est arrondi à l'entier le plus proche, les demis vers le haut, avec un minimum d'un mot lorsqu'un mot est admissible ; les fractions réalisées peuvent donc différer des niveaux nominaux.
+
+Seules les requêtes changent ; le corpus, l'index BM25 et les embeddings du corpus restent figés. L'âge et le sexe sont extraits à nouveau du texte bruité, et le masque SQL est recalculé sans retoucher les règles d'extraction. L'analyse partielle couvre BM25, A, B et C. Elle rapporte la nDCG@10 et un intervalle bootstrap pairé à 95\,\% pour la différence absolue, bruité moins propre, avec 10\,000 rééchantillonnages. Ces intervalles descriptifs rééchantillonnent les requêtes au sein d'un seul tirage de bruit ; ils ne quantifient pas la variabilité entre tirages indépendants. Aucune nouvelle déclaration de significativité n'est faite ni ajoutée à la famille des tests d'ablation. Les perturbations concernent des requêtes de benchmark en anglais et ne modélisent ni une distribution de fautes cliniques ni les erreurs numériques.
+
+\subsection{Matériel}
+
+Les embeddings, la recherche vectorielle et les scores des modèles de décision sont calculés sur un GPU T4 de Google Colab (16~Go) ; les classements et les scores bruts de décision avec leur provenance sont rapatriés. Toutes les autres étapes, y compris SQL, BM25 et le calcul des métriques, s'exécutent sur un ordinateur portable équipé d'un Intel Core i5-10210U, de 15~Go de RAM et sans GPU dédié. Eos utilise le runtime GPU officiel BF16/FP32. BGE est exécuté en FP16 sur T4 ; aucun des deux modèles ne dispose d'une référence mesurée sur le processeur du portable. Colab est un service cloud. L'étude utilise des données de benchmark publiques. Le déploiement sur site et le traitement de dossiers cliniques privés ne sont pas testés. Les versions des modèles, les graines aléatoires et la liste des documents indexés sont fixées dans le dépôt de code.
+
+% ---------------------------------------------------------------------------
+\section{Résultats}
+\label{sec:results}
+
+\begin{table}[t]
+  \caption{Qualité de recherche sur les 375\,580 essais TREC. Moyennes sur 75 requêtes en 2021 et 50 en 2022. D et E reclassent les top~50 de B et C avec Eos ; les témoins BGE D$\prime$/E$\prime$ utilisent les mêmes pools.}
+  \label{tab:results-exp1}
+  \centering
+  \small
+  \begin{tabular}{llcccccc}
+    \toprule
+    Année & Config. & P@10 & R@10 & RPrec & MRR & nDCG@10 & Judged@10 \\
+    \midrule
+    2021 & BM25 & 0{,}153 & 0{,}029 & 0{,}087 & 0{,}311 & 0{,}275 & 0{,}699 \\
+     & A & 0{,}180 & 0{,}034 & 0{,}099 & 0{,}365 & 0{,}303 & 0{,}723 \\
+     & B & 0{,}263 & 0{,}067 & 0{,}168 & 0{,}514 & 0{,}396 & 0{,}579 \\
+     & C & 0{,}281 & 0{,}071 & 0{,}186 & 0{,}554 & 0{,}413 & 0{,}595 \\
+     & D & 0{,}296 & 0{,}071 & 0{,}169 & 0{,}554 & 0{,}402 & 0{,}568 \\
+     & E & 0{,}321 & 0{,}081 & 0{,}194 & 0{,}585 & 0{,}415 & 0{,}571 \\
+     & D$'$ & 0{,}252 & 0{,}054 & 0{,}157 & 0{,}466 & 0{,}376 & 0{,}608 \\
+     & E$'$ & 0{,}276 & 0{,}059 & 0{,}175 & 0{,}511 & 0{,}393 & 0{,}605 \\
+    \midrule
+    2022 & BM25 & 0{,}168 & 0{,}027 & 0{,}086 & 0{,}340 & 0{,}254 & 0{,}778 \\
+     & A & 0{,}210 & 0{,}036 & 0{,}106 & 0{,}389 & 0{,}277 & 0{,}744 \\
+     & B & 0{,}302 & 0{,}060 & 0{,}183 & 0{,}520 & 0{,}411 & 0{,}684 \\
+     & C & 0{,}322 & 0{,}068 & 0{,}205 & 0{,}587 & 0{,}423 & 0{,}666 \\
+     & D & 0{,}378 & 0{,}081 & 0{,}205 & 0{,}634 & 0{,}474 & 0{,}694 \\
+     & E & 0{,}402 & 0{,}094 & 0{,}230 & 0{,}658 & 0{,}479 & 0{,}676 \\
+     & D$'$ & 0{,}296 & 0{,}058 & 0{,}186 & 0{,}498 & 0{,}413 & 0{,}736 \\
+     & E$'$ & 0{,}332 & 0{,}070 & 0{,}210 & 0{,}533 & 0{,}420 & 0{,}732 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \caption{Différences appariées [IC à 95\,\% par bootstrap, 10\,000 rééchantillonnages] et $p$ de Wilcoxon corrigé par Holm. Famille prospective de 99 tests par année : 99 tests observés, aucun emplacement réservé. Métriques sélectionnées ; toutes les valeurs sont dans le rapport JSON.}
+  \label{tab:diff-exp1}
+  \centering
+  \small
+  \setlength{\tabcolsep}{2.5pt}
+  \begin{tabular}{llcccc}
+    \toprule
+    Paire & Métrique & \multicolumn{2}{c}{2021} & \multicolumn{2}{c}{2022} \\
+    & & Différence [IC 95\,\%] & $p_{\mathrm{Holm}}$ & Différence [IC 95\,\%] & $p_{\mathrm{Holm}}$ \\
+    \midrule
+    B $-$ BM25 & P@20 & $+0{,}0800\;[+0{,}0447, +0{,}1160]$ & $<0{,}001$ & $+0{,}0930\;[+0{,}0420, +0{,}1480]$ & 0{,}120 \\
+     & R@20 & $+0{,}0498\;[+0{,}0316, +0{,}0697]$ & $<0{,}001$ & $+0{,}0516\;[+0{,}0276, +0{,}0801]$ & 0{,}024 \\
+     & nDCG@10 & $+0{,}1208\;[+0{,}0621, +0{,}1778]$ & 0{,}014 & $+0{,}1573\;[+0{,}0877, +0{,}2306]$ & 0{,}018 \\
+    \midrule
+    A $-$ BM25 & P@20 & $+0{,}0187\;[+0{,}0107, +0{,}0280]$ & 0{,}025 & $+0{,}0250\;[+0{,}0120, +0{,}0410]$ & 0{,}042 \\
+     & R@20 & $+0{,}0049\;[+0{,}0012, +0{,}0089]$ & 0{,}178 & $+0{,}0106\;[+0{,}0031, +0{,}0225]$ & 0{,}038 \\
+     & nDCG@10 & $+0{,}0286\;[+0{,}0143, +0{,}0441]$ & 0{,}010 & $+0{,}0237\;[+0{,}0010, +0{,}0475]$ & 1{,}000 \\
+    \midrule
+    C $-$ B & P@20 & $+0{,}0187\;[+0{,}0087, +0{,}0300]$ & 0{,}083 & $+0{,}0250\;[+0{,}0110, +0{,}0400]$ & 0{,}114 \\
+     & R@20 & $+0{,}0088\;[+0{,}0031, +0{,}0162]$ & 0{,}118 & $+0{,}0148\;[+0{,}0046, +0{,}0279]$ & 0{,}193 \\
+     & nDCG@10 & $+0{,}0178\;[+0{,}0047, +0{,}0328]$ & 0{,}300 & $+0{,}0117\;[-0{,}0020, +0{,}0271]$ & 1{,}000 \\
+    \midrule
+    C $-$ A & P@20 & $+0{,}0800\;[+0{,}0420, +0{,}1173]$ & 0{,}002 & $+0{,}0930\;[+0{,}0410, +0{,}1480]$ & 0{,}149 \\
+     & R@20 & $+0{,}0537\;[+0{,}0331, +0{,}0757]$ & $<0{,}001$ & $+0{,}0559\;[+0{,}0303, +0{,}0850]$ & 0{,}024 \\
+     & nDCG@10 & $+0{,}1100\;[+0{,}0504, +0{,}1699]$ & 0{,}048 & $+0{,}1453\;[+0{,}0708, +0{,}2232]$ & 0{,}091 \\
+    \midrule
+    D $-$ B & P@20 & $+0{,}0420\;[+0{,}0240, +0{,}0600]$ & 0{,}013 & $+0{,}0640\;[+0{,}0430, +0{,}0860]$ & $<0{,}001$ \\
+     & R@20 & $+0{,}0194\;[+0{,}0106, +0{,}0285]$ & $<0{,}001$ & $+0{,}0280\;[+0{,}0182, +0{,}0388]$ & $<0{,}001$ \\
+     & nDCG@10 & $+0{,}0063\;[-0{,}0365, +0{,}0492]$ & 1{,}000 & $+0{,}0627\;[+0{,}0055, +0{,}1146]$ & 0{,}416 \\
+    \midrule
+    E $-$ C & P@20 & $+0{,}0473\;[+0{,}0280, +0{,}0667]$ & 0{,}002 & $+0{,}0660\;[+0{,}0420, +0{,}0900]$ & $<0{,}001$ \\
+     & R@20 & $+0{,}0235\;[+0{,}0131, +0{,}0346]$ & $<0{,}001$ & $+0{,}0318\;[+0{,}0198, +0{,}0453]$ & $<0{,}001$ \\
+     & nDCG@10 & $+0{,}0020\;[-0{,}0425, +0{,}0462]$ & 1{,}000 & $+0{,}0563\;[-0{,}0004, +0{,}1076]$ & 0{,}747 \\
+    \midrule
+    E $-$ D & P@20 & $+0{,}0240\;[+0{,}0113, +0{,}0387]$ & 0{,}044 & $+0{,}0270\;[+0{,}0110, +0{,}0440]$ & 0{,}091 \\
+     & R@20 & $+0{,}0129\;[+0{,}0051, +0{,}0230]$ & 0{,}057 & $+0{,}0186\;[+0{,}0058, +0{,}0343]$ & 0{,}210 \\
+     & nDCG@10 & $+0{,}0135\;[-0{,}0045, +0{,}0339]$ & 1{,}000 & $+0{,}0053\;[-0{,}0121, +0{,}0243]$ & 1{,}000 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Les tableaux~\ref{tab:results-exp1} et~\ref{tab:diff-exp1} présentent huit configurations mesurées et l'analyse actuelle à 99 emplacements. La recherche sémantique fait passer le nDCG@10 de 0,275 à 0,396 en 2021 et de 0,254 à 0,411 en 2022. B dépasse BM25 sur neuf métriques de qualité en 2021 et sept en 2022 après Holm. C dépasse B en R-Precision et MRR les deux années ; son écart de nDCG@10 n'est pas concluant ($p_{\mathrm{Holm}}=0{,}300$ et 1,000). A dépasse BM25 sur cinq métriques en 2021 et quatre en 2022 ; C dépasse A sur huit et trois. Ces comptes remplacent les affirmations issues de l'ancienne famille de 36 tests. Eos fait passer le nDCG@10 de B (0,396/0,411) à D (0,402/0,474) et de C (0,413/0,423) à E (0,415/0,479), pour 2021/2022. Aucun des écarts D--B, E--C ou E--D n'est concluant en nDCG@10 après Holm. D--B et E--C améliorent P@20 et R@20 les deux années ; E--C améliore aussi R@10 et R-Precision en 2022. Les scores par requête et toutes les comparaisons sont archivés dans \texttt{results/exp1\_decision\_eos\_bge.json}.
+
+La recherche par le sens renvoie moins d'essais jugés dans ses dix premiers résultats (Judged@10 de 0,579 pour B contre 0,699 pour BM25 en 2021, 0,684 contre 0,778 en 2022), car les pools de TREC ont surtout été construits à partir d'autres systèmes. Un essai non jugé compte comme non pertinent : les scores de B et C sont donc probablement sous-estimés par rapport à BM25. Le filtre écarte 1,24\,\% (2021) et 1,95\,\% (2022) des essais jugés éligibles, presque toujours à cause d'une borne d'âge. Ces chiffres relèvent d'un cadre de développement : les règles d'extraction de l'âge et du sexe ont été écrites sur les mêmes 125 requêtes.
+
+
+\begin{table}[t]
+\centering\small
+\caption{Témoin BGE sur les mêmes pools : différences de nDCG@10 et p corrigés (99 tests/an).}
+\begin{tabular}{lrrrr}
+\toprule
+Paire & $\Delta$ 2021 & $p_H$ & $\Delta$ 2022 & $p_H$ \\
+\midrule
+D$'$--B & -0{,}0197 & 1{,}000 & 0{,}0020 & 1{,}000 \\
+E$'$--C & -0{,}0205 & 1{,}000 & -0{,}0024 & 1{,}000 \\
+D--D$'$ & 0{,}0259 & 1{,}000 & 0{,}0607 & 0{,}345 \\
+E--E$'$ & 0{,}0224 & 1{,}000 & 0{,}0587 & 0{,}709 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\paragraph{Coût du calcul Eos.} L'exécution v2 complète a noté les 7\,340 paires distinctes en 5\,507,75 secondes (91,80 minutes), écritures des checkpoints et snapshots comprises, mais hors chargement du modèle et préflight. Ce total n'est pas une latence en ligne par requête. Le préflight accepte toutes les paires, avec un maximum de 5\,682 tokens sous la limite de 16\,384. Les scores bruts, la provenance, le statut et le benchmark sont rapatriés et vérifiés localement. BGE note les mêmes paires en 500,61 secondes (8,34 minutes), sauvegardes comprises, hors chargement/préflight ; son pic de mémoire CUDA allouée par PyTorch est de 1,19 Gio, et non la mémoire totale du GPU. Son préflight accepte les 7\,340 paires, maximum 5\,986 tokens sur 8\,192. Les précisions et runtimes diffèrent : ce rapport de durées n'isole pas une efficacité intrinsèque des modèles. Aucun pic mémoire complet Eos n'est disponible.
+
+\subsection{Résultats partiels de robustesse}
+
+Le tableau~\ref{tab:noise-partial} présente les mesures disponibles pour BM25 et A. Les huit IC de différence absolue contiennent zéro ; les différences ponctuelles vont dans les deux sens. Ce tirage descriptif ne permet ni de conclure à une équivalence ni d'établir une robustesse générale aux fautes.
+
+Sur les 125 requêtes, l'âge est correctement extrait dans 114 cas à 5\,\% et 102 cas à 10\,\%, avec une extraction fausse à chaque niveau et respectivement 10 et 22 abstentions. Le sexe est correctement extrait dans 124 puis 123 cas, sans extraction fausse, avec une puis deux abstentions. Les règles sont restées inchangées après observation du bruit. Ces erreurs et abstentions peuvent modifier le masque SQL de A.
+
+Le tableau~\ref{tab:noise-semantic} ajoute B et C, avec 5\,000 valeurs de métriques recoupées avec \texttt{ir\_measures}. Les huit moyennes bruitées sont inférieures aux moyennes propres correspondantes. En 2021, les pertes relatives ponctuelles à 5\,\% puis 10\,\% sont de 1,08\,\% et 3,52\,\% pour B, et de 1,36\,\% et 3,14\,\% pour C ; les quatre IC de différence incluent zéro. En 2022, les pertes sont de 4,51\,\% puis 6,62\,\% pour B, et de 2,30\,\% puis 6,53\,\% pour C. Les IC sont entièrement négatifs pour B aux deux niveaux et pour C à 10\,\% ; celui de C à 5\,\% inclut zéro. Ces IC descriptifs ne sont pas des tests corrigés pour comparaisons multiples ; aucune comparaison directe des sensibilités de B et C n'est effectuée.
+
+Les requêtes bruitées ont été encodées sur CPU en float32 avec le même modèle, la même révision et le même préfixe que le propre, puis comparées par recherche exacte aux vecteurs du corpus inchangés. Un seul tirage synthétique ne suffit pas à établir une robustesse générale. Les rerankers Eos et BGE sur leurs propres pools bruités n'ont pas encore été mesurés.
+
+\begin{table}[t]
+  \caption{Résultats partiels sous bruit synthétique : nDCG@10 moyenne de BM25 et A, et différence absolue $\Delta =$ bruité $-$ propre avec IC bootstrap pairé à 95\,\%. Chaque niveau est comparé au propre du même système sur les mêmes requêtes (75 en 2021, 50 en 2022).}
+  \label{tab:noise-partial}
+  \centering
+  \small
+  \begin{tabular}{llrccc}
+    \toprule
+    Année & Système & Bruit & Propre & Bruité & $\Delta$ [IC 95\,\%] \\
+    \midrule
+    2021 & BM25 & 5\% & 0{,}2747 & 0{,}2809 & $0{,}0062\;[-0{,}0049, 0{,}0175]$ \\
+    2021 & BM25 & 10\% & 0{,}2747 & 0{,}2769 & $0{,}0023\;[-0{,}0144, 0{,}0203]$ \\
+    2021 & A & 5\% & 0{,}3033 & 0{,}3072 & $0{,}0039\;[-0{,}0077, 0{,}0161]$ \\
+    2021 & A & 10\% & 0{,}3033 & 0{,}3004 & $-0{,}0030\;[-0{,}0209, 0{,}0151]$ \\
+    \midrule
+    2022 & BM25 & 5\% & 0{,}2538 & 0{,}2474 & $-0{,}0063\;[-0{,}0277, 0{,}0123]$ \\
+    2022 & BM25 & 10\% & 0{,}2538 & 0{,}2530 & $-0{,}0008\;[-0{,}0266, 0{,}0236]$ \\
+    2022 & A & 5\% & 0{,}2775 & 0{,}2753 & $-0{,}0022\;[-0{,}0261, 0{,}0188]$ \\
+    2022 & A & 10\% & 0{,}2775 & 0{,}2664 & $-0{,}0111\;[-0{,}0409, 0{,}0175]$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \caption{B/C sous bruit synthétique : nDCG@10 moyenne, différence absolue $\Delta =$ bruité $-$ propre avec IC bootstrap pairé à 95\,\%, et perte relative ponctuelle $1-$ (moyenne bruitée/moyenne propre). Même tirage et mêmes requêtes que le tableau~\ref{tab:noise-partial}.}
+  \label{tab:noise-semantic}
+  \centering
+  \small
+  \begin{tabular}{llrcccc}
+    \toprule
+    Année & Syst. & Bruit & Propre & Bruité & $\Delta$ [IC 95\,\%] & Perte rel. \\
+    \midrule
+    2021 & B & 5\% & 0{,}3955 & 0{,}3913 & $-0{,}0043\;[-0{,}0237, 0{,}0147]$ & 1{,}08\% \\
+    2021 & B & 10\% & 0{,}3955 & 0{,}3816 & $-0{,}0139\;[-0{,}0355, 0{,}0065]$ & 3{,}52\% \\
+    2021 & C & 5\% & 0{,}4133 & 0{,}4077 & $-0{,}0056\;[-0{,}0245, 0{,}0126]$ & 1{,}36\% \\
+    2021 & C & 10\% & 0{,}4133 & 0{,}4003 & $-0{,}0130\;[-0{,}0354, 0{,}0089]$ & 3{,}14\% \\
+    \midrule
+    2022 & B & 5\% & 0{,}4111 & 0{,}3925 & $-0{,}0185\;[-0{,}0347, -0{,}0036]$ & 4{,}51\% \\
+    2022 & B & 10\% & 0{,}4111 & 0{,}3839 & $-0{,}0272\;[-0{,}0499, -0{,}0067]$ & 6{,}62\% \\
+    2022 & C & 5\% & 0{,}4228 & 0{,}4130 & $-0{,}0097\;[-0{,}0281, 0{,}0084]$ & 2{,}30\% \\
+    2022 & C & 10\% & 0{,}4228 & 0{,}3952 & $-0{,}0276\;[-0{,}0525, -0{,}0049]$ & 6{,}53\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La robustesse Eos/BGE sur leurs propres pools bruités reste une perspective.
+
+% ---------------------------------------------------------------------------
+\section{Discussion et limites}
+\label{sec:discussion}
+
+Le reclassement Eos améliore P@20 et R@20 sur les deux ensembles annuels, mais ses gains de nDCG@10 ne passent pas la correction de Holm prospective. Le gain ponctuel plus fort en 2022 ne démontre donc pas une amélioration générale du classement top~10. Face à BGE sur les mêmes pools, Eos obtient des moyennes nDCG@10 plus élevées, mais D--D$'$ et E--E$'$ restent non concluants après Holm. E dépasse E$'$ en R@20 les deux années et en P@20 et R@10 en 2022 ; D dépasse D$'$ en R@5 et R@10 en 2022. Ces écarts ne démontrent pas une supériorité générale du paradigme décision. Aucune architecture déployée n'est évaluée.
+
+Les jugements de pertinence TREC sont incomplets, et Judged@10 rend cette limite visible sans la corriger. Le corpus d'essais et les descriptions anglaises de patients ne démontrent pas un transfert vers la pratique clinique en Afrique centrale ni vers des requêtes françaises. Les règles démographiques ont été développées sur les mêmes 125 sujets qui servent à les évaluer. Les scores Eos n'ont aucune calibration clinique démontrée, et une évaluation de recherche documentaire n'est pas une validation prospective de l'éligibilité. Le modèle classe des documents ; un clinicien doit encore examiner l'éligibilité aux essais. L'exécution sur Colab ne démontre pas non plus un déploiement sur site.
+
+IU Chest X-ray~\citep{demnerfushman2016iuxray} est réservé à une future expérience texte--image. Cette extension nécessiterait des jugements distincts et une règle interdisant de réutiliser les étiquettes radiologiques cibles comme filtres SQL ; aucun résultat radiologique n'est annoncé ici. Une comparaison optionnelle avec Sol, d'autres tailles de pool, les questions par liste et l'indexation approchée sont aussi des perspectives, et non des variantes mesurées de cette étude.
+
+% ---------------------------------------------------------------------------
+\section{Conclusion}
+
+Sur ces benchmarks publics anglais, la recherche sémantique améliore BM25 et le reclassement Eos top~50 améliore précision et rappel au rang 20, tandis que ses gains de nDCG@10 restent non concluants après correction. Le témoin BGE n'établit pas de supériorité générale d'Eos en nDCG@10 ; usage clinique, transfert au français et radiologie ne sont pas validés.
+
+% ---------------------------------------------------------------------------
+\small
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

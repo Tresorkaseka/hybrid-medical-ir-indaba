@@ -1,0 +1,321 @@
+\documentclass{article}
+
+% Same template as "Attention Is All You Need" (NIPS 2017 style).
+% [final] shows the author block; remove it for an anonymous submission.
+\usepackage[final]{nips_2017}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds}
+
+% Placeholder for numbers that will only exist after the experiments.
+\newcommand{\tbd}{\textcolor{gray}{--}}
+% Visible note for unfinished parts. Remove all \todo before submission.
+\newcommand{\todo}[1]{\textcolor{orange}{[TODO: #1]}}
+
+\title{Filter, Retrieve, Decide: A Controlled Study of Hybrid\\Retrieval Architectures for Medical Information}
+
+\author{
+  Kaseka Mwavingi Tresor \\
+  Université Nouveaux Horizons \\
+  Democratic Republic of the Congo \\
+  \texttt{tresormwavingi@gmail.com}
+}
+
+\begin{document}
+
+\maketitle
+
+% ---------------------------------------------------------------------------
+\begin{abstract}
+We study structured filtering, semantic retrieval and decision-model reranking on 125 TREC Clinical Trials 2021--2022 queries over 375{,}580 trials. SQLite age/sex filtering precedes exact cosine retrieval with 768-dimensional EmbeddingGemma~2 vectors; Decision~2.0 Eos~0.8B reranks the first 50 results while preserving positions 51--1000. Semantic retrieval achieves nDCG@10 of 0.396/0.411 (2021/2022), compared with 0.275/0.254 for BM25. Filtering plus semantic retrieval reaches 0.413/0.423, and Eos raises these means to 0.415/0.479. These reranking differences are not conclusive on nDCG@10 after the prospective 99-test Holm correction; P@20 and R@20 improve in both years. Scoring 7{,}340 unique pairs takes 91.80 minutes on a Colab T4, including checkpoint operations. Synthetic spelling noise is evaluated for BM25 and A--C only. The filtered BGE control reaches 0.393/0.420; Eos has higher means but no conclusive nDCG@10 difference after correction. E exceeds its control on recall at rank 20 in both years. The study uses English public text; clinical calibration and IU Chest X-ray evaluation remain outside its measured scope.
+\end{abstract}
+
+% ---------------------------------------------------------------------------
+\section{Introduction}
+
+A hospital information system stores two kinds of content. The first is structured: a patient's age, sex, admission dates, coded diagnoses and laboratory values, usually kept in relational tables. The second is unstructured: clinical notes, discharge summaries, radiology reports and the images they describe. Clinicians and researchers rarely ask questions that fall cleanly into one kind. A request such as ``women under fifty with heart failure whose chest radiograph shows findings similar to this one'' contains an exact constraint, a clinical concept that may be phrased in many ways, and a visual example.
+
+SQL answers the exact part of such a query precisely and reproducibly. It does not capture meaning: a search for ``heart failure'' will not match a report that describes ``cardiac decompensation with ventricular dysfunction''. Dense retrieval represents text and images as vectors so that content with similar meaning lands close together, which addresses the vocabulary problem but gives no guarantee that a hard constraint holds. A vector cannot promise that a patient is under fifty.
+
+A third option became available in 2026 with the release of decision models, which TypeSafe calls System One models~\citep{typesafe2026}. Instead of generating text, these models read a context and return a typed answer to a closed question together with a probability, for example whether a candidate document is relevant to a query. Several open-weight models now follow the same contract~\citep{systemonealternatives}, and several come in sizes small enough for a single 16~GB GPU. Recent work has evaluated decision models on medical question answering, on the factuality of radiology reports and on private clinical records \todo{cite 2610.18529, 2609.27607, 2610.27099 after full reading}. To our knowledge, they have not been tested as rerankers on public retrieval benchmarks, with standard retrieval metrics and against classical rerankers.
+
+This paper asks whether these three components are complementary in practice, and on which kinds of queries. We do not assume that adding components helps. Each layer is added one at a time and compared with simpler baselines, including a classical reranker control, to distinguish the contribution of the decision model from reranking alone. Many health systems in our region have limited hardware and may be unable to send patient data to external services. We therefore restrict ourselves to open-weight models small enough for a single modest GPU, and we measure latency, memory and compute cost. Our experiments use public data and a rented cloud GPU, so they do not by themselves demonstrate deployment on site.
+
+The main experiment isolates age/sex filtering, lexical retrieval, semantic retrieval and pointwise reranking on two annual TREC topic sets with expert judgments. We report BM25, A--E and a classical BGE reranker control on identical top-50 pools. A radiology extension and an optional Sol run are outside the measured scope of this version.
+
+% ---------------------------------------------------------------------------
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Patient-to-trial matching.} The TREC Clinical Trials track defines the task used in our main experiment: given a patient description, rank trials from ClinicalTrials.gov, with judgments for eligible, excluded and not relevant~\citep{roberts2022trecct}. The best system of 2021 combined about 40 short synthetic queries, issued to BM25 and fused with reciprocal rank fusion, with a monoT5 reranker trained on judgments from another collection, and reached 0.7118 nDCG@10~\citep{pradeep2022nqs}. The same study shows that a zero-shot reranker does not always help: on top of a first stage scoring 0.4726, the zero-shot variants ranged from 0.2311 to 0.4715 depending on which parts of the trial they read, and the best one read the eligibility criteria. TrialGPT asks a large language model to judge each eligibility criterion and aggregates the answers into a trial score, with a hybrid BM25 and MedCPT retrieval stage; it reaches about 0.73 nDCG@10 with GPT-4~\citep{jin2024trialgpt}. Its corpus is reduced to the judged trials of each cohort, and its authors state that the scores are not comparable with those of TREC participants. It also depends on a closed API. We differ in two ways: we use open-weight models only, and we compare configurations by ablation instead of presenting one system.
+
+\paragraph{Retrieval in clinical records and structured data.} CliniQ, a public benchmark built on discharge summaries, finds that BM25 is a strong baseline, that general-domain dense retrievers outperform biomedical ones, and that fusing lexical and dense results improves recall and MRR~\citep{zhao2025cliniq}. MedCPT was trained on 255 million PubMed search clicks and reached state-of-the-art zero-shot results on biomedical literature search~\citep{jin2023medcpt}; its behavior on clinical records and trial descriptions is less settled, since TrialGPT finds it far better than BM25 on trials while CliniQ finds general models ahead on records. For structured data, EHRSQL benchmarks the translation of hospital questions into SQL~\citep{lee2022ehrsql}. We do not translate questions with a learned parser: a rule-based decomposition keeps the effect of each component separate from the effect of a parser. \todo{cite TREC participants who filter on age and sex, after reading their papers.}
+
+\paragraph{Decision models.} Decision models answer closed questions with a probability and no generated text. In medicine they have so far been evaluated as answerers and judges. A comparison of 23 model configurations on 15 medical datasets found that Jev matches leading models on mostly textual tasks, is weaker on numeric tasks, and that an open model, D3-27B, reached the highest accuracy; abstention was weak for most models~\citep{du2026reliable}. Jev has also been used to judge the factual consistency of generated radiology reports~\citep{huang2026jevradiology}. CS1, trained on hospital records, screens patients for 17 trials and reaches 0.64 nDCG@20 against 0.11 for BM25, but its relevance labels come from a language model, its training data are private and its weights are not yet released~\citep{zhang2026cs1}. Outside medicine, decision models have been used as rerankers. A single multiple-choice question over 16 candidates improved a first-stage retriever (76.76 against 74.85 hit@1), while a yes or no question per candidate fell below it (69.50), and the smallest Gemma 4 models degraded the first stage~\citep{liu2026multimodalrerank}. In recommendation, Jev was competitive with lower latency than stronger language-model rerankers, and the aggregate score hid large changes in individual results when the candidate order changed~\citep{lyu2026decisionrerank}. To our knowledge, these models have not been tested as rerankers on public medical retrieval benchmarks against classical rerankers.
+
+\paragraph{Medical image and text retrieval.} BiomedCLIP, trained on 15 million figure and caption pairs from PubMed Central, is the reference for biomedical image and text embeddings~\citep{zhang2023biomedclip}. Used without training for radiology image retrieval, it reached a precision at rank 1 of 0.594 when relevance meant belonging to the same class~\citep{denner2025cbir}. Retrieving the exact paired report is much harder: on the Open-I collection, the best CXR-CLIP model finds the correct report in the top 10 in 12.3\% of cases~\citep{you2023cxrclip}. Relevance based on shared radiological labels is a possible extension; no radiological experiment is included in the present evaluation. We found no evaluation of EmbeddingGemma~2 on medical retrieval.
+
+\paragraph{Gap.} We found no study that evaluates structured filtering, semantic retrieval and a decision model together, by ablation, on public medical benchmarks with expert judgments. Our search relied on a search engine and arXiv, not on PubMed or Google Scholar, so this statement holds to the best of our knowledge.
+
+% ---------------------------------------------------------------------------
+\section{Method}
+\label{sec:method}
+
+\begin{figure}[t]
+  \centering
+  \fbox{\parbox{0.92\linewidth}{\small
+  A patient description supplies both the age/sex rules and the semantic encoder. SQLite produces an allowed-trial mask. Exact cosine search over the fixed corpus vectors applies this mask and returns C. Eos scores each of the first 50 patient--trial pairs; those 50 are sorted by the returned eligibility probability, with ties retaining their original order. Positions 51--1000 remain in the C order.}}
+  \caption{Operational description of configuration E. Configuration D uses the same reranking step on B, without the SQL mask. A is a separate filtered BM25 comparator, not an input list merged into E.}
+  \label{fig:architecture}
+\end{figure}
+
+\paragraph{Overview.} Figure~\ref{fig:architecture} describes the implemented pipeline. Rules extract the patient's age and sex without removing any words from the description used for retrieval. In A, SQLite filters the corpus and BM25 ranks the allowed trials. In B, EmbeddingGemma~2 encodes the full description and exact cosine similarity ranks all corpus vectors. C applies the SQLite age/sex mask to that same vector search. It does not merge BM25 and semantic lists. D and E rerank the first 50 candidates from B and C, respectively. No approximate vector index, reciprocal rank fusion or image input is used in this evaluation.
+
+\paragraph{Embeddings.} We use the text component of EmbeddingGemma~2 at 768 dimensions~\citep{embeddinggemma2}, with revision \texttt{f9972ac}. Trials contain the same title, conditions, summary, detailed description and eligibility criteria as the BM25 index. The model-card document template and query prefix are kept fixed. Corpus vectors are computed in float32, normalized and stored in float16; search loads them into float32 and computes exact cosine scores over the fixed corpus, with no approximate index. The model card warns against float16 computation; the storage format is distinct from the computation format. A 500-trial test found float32 computation faster than bfloat16 on the T4. No dimension-reduction or multimodal result is part of this study.
+
+\paragraph{Decision model.} D and E use Decision~2.0 Eos~0.8B, revision \texttt{52cad37}, in the official yes/no format.\footnote{Pinned model and runtime: \url{https://huggingface.co/vllm-sr/Decision-2.0-Eos-0.8B/tree/52cad37ef21f598302fe964cbfa164739cb965d5}.} For each patient--trial pair, the request supplies the full patient description, the complete trial text and a closed question asking whether the patient is eligible under the stated inclusion and exclusion criteria. The official runtime uses a BF16 backbone and an FP32 decision head on the GPU; it is not forced to FP16. Its tokenizer and encoder are checked before scoring, and inputs are not silently truncated. The \texttt{noul} answer is used as a ranking score, not as a clinically validated probability. No calibration on clinical outcomes has been demonstrated. The same patient--trial pair shared by B and C is scored once, yielding 7{,}340 unique calls instead of 12{,}500 pool positions; scores are never shared across different patients. The pointwise protocol does not test listwise questions or candidate-order rotations. Sol remains an optional, unmeasured extension.
+
+\paragraph{Classical reranker control.} BGE-reranker-v2-m3~\citep{chen2024bgem3}, revision \texttt{953dc6f}, is the only evaluated control.\footnote{Pinned control: \url{https://huggingface.co/BAAI/bge-reranker-v2-m3/tree/953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e}.} D$'$ and E$'$ replace Eos on exactly the B and C top-50 pools, using the same patient and trial texts. BGE returns unrestricted relevance logits, which are sorted directly and are not interpreted as Eos probabilities. Its Colab driver uses FP16, records the runtime configuration and checks every untruncated text pair against the 8{,}192-token limit before GPU scoring. It stops on overflow or model error. BGE execution and retrieval-quality outputs are complete and validated locally.
+
+\paragraph{Pool size and recall ceiling.} The pool size is fixed at $N=50$ before the Eos comparison. Each reranker stably sorts only these 50 candidates; ties retain the first-stage order. Positions 51--1000 are appended unchanged, so the output remains a 1{,}000-document ranking. A relevant trial outside the pool cannot enter the first 50 through reranking, and recall at depth 1{,}000 is unchanged by construction. Mean grade-2 recall in the top-50 pool is 0.1595/0.1723 for B and 0.1797/0.1922 for C (2021/2022). Reranking preserves these pools; this recall is not a direct bound on graded nDCG. A sweep over pool sizes is not part of this version.
+
+% ---------------------------------------------------------------------------
+\section{Experimental setup}
+\label{sec:setup}
+
+The main study is restricted to patient-to-trial retrieval using the TREC Clinical Trials 2021 and 2022 topic sets. These are two annual query and judgment sets over the same trial corpus, not two different modalities. Each query is a patient description, and eligible trials are the relevant documents. No private hospital record or image collection enters the present experiments.
+
+\subsection{Patient-to-trial matching}
+
+We use the TREC Clinical Trials 2021 and 2022 topics~\citep{roberts2021trecct}, loaded through \texttt{ir\_datasets}~\citep{irdatasets}. Queries are 75 and 50 free-text patient descriptions written by clinicians. The corpus is the April 27, 2021 snapshot of ClinicalTrials.gov and contains 375{,}580 trials as loaded with \texttt{ir\_datasets} (the TREC 2022 overview reports 375{,}581). Judgments label each trial as not relevant, excluded or eligible; in 2022 they cover 35{,}394 topic--trial pairs pooled to depth 40 from 41 submitted runs~\citep{roberts2022trecct}. The best 2022 run, a monoT5 reranker, reached 0.6125 nDCG@10 and 0.7262 MRR~\citep{roberts2022trecct}. We index the full corpus. Our scores are still only indicatively comparable with official ones, because our tokenization is simpler than that of most submitted systems (no stemming, no stopword removal), so we use the official figures as reference points only. The structured branch filters on the minimum and maximum age and the sex accepted by each trial, and a missing bound imposes no constraint; the patient's age and sex are extracted from the description with regular expressions and checked by hand. The text of a trial concatenates its title, conditions, brief summary, detailed description and eligibility criteria. The \texttt{condition} field returned by \texttt{ir\_datasets} is empty for every trial, so conditions are read from the raw XML records; 374{,}720 trials have at least one.
+
+
+
+\subsection{Configurations}
+
+\begin{table}[t]
+  \caption{Configurations in the study. BM25, A--E and BGE controls D$'$/E$'$ are measured. The control replaces Eos with BGE on identical pools.}
+  \label{tab:configs}
+  \centering
+  \small
+  \begin{tabular}{llp{0.52\linewidth}}
+    \toprule
+    Id & Configuration & Pipeline \\
+    \midrule
+    A & SQL + BM25 & SQL filter, then BM25~\citep{robertson2009bm25} on the filtered subset \\
+    B & Semantic only & EmbeddingGemma~2, exact cosine search \\
+    C & SQL + semantic & Exact cosine search restricted by the SQL mask \\
+    D & Semantic + decision & B top-50, Eos yes/no reranking \\
+    E & Full & C top-50, Eos yes/no reranking \\
+    D$'$, E$'$ & Reranker controls & B and C top-50, BGE-reranker-v2-m3~\citep{chen2024bgem3} \\
+    \midrule
+    \multicolumn{3}{l}{\emph{Lexical reference}} \\
+    BM25 & Lexical & BM25 on the full corpus, no filter \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Table~\ref{tab:configs} lists the configurations. A to C replaces lexical ranking with semantic ranking under the same SQL filter. C to E and B to D isolate pointwise reranking with and without the filter. D, E and their BGE controls are measured on identical pools.
+
+\subsection{Metrics and statistical analysis}
+
+We report Precision@K and Recall@K for $K \in \{5, 10, 20\}$, R-Precision, mean reciprocal rank (MRR), and nDCG@10~\citep{jarvelin2002ndcg}. For TREC Clinical Trials we follow the official TREC evaluation: nDCG uses graded gain (eligible~=~2, excluded~=~1, not relevant~=~0), and all other metrics count only eligible trials as relevant~\citep{roberts2022trecct}. Because TREC judgments come from pooled runs, a system that retrieves trials no participant retrieved is scored as if those trials were not relevant. We therefore report Judged@10, the share of top-10 results that carry a judgment, next to every score. Pool recall is reported above. The completed Eos run duration is reported below. Inference timings and peak GPU memory are recorded separately from retrieval quality. No expected calibration error, Brier score or clinical calibration result is reported.
+
+Differences are tested per query with the paired two-sided Wilcoxon signed-rank test~\citep{wilcoxon1945} and Holm correction~\citep{holm1979}. Before reading D/E quality scores, we fixed 11 pairs and nine quality metrics per year, or 99 tests: B--BM25, A--BM25, C--B, C--A, D--B, E--C, E--D, D$'$--B, E$'$--C, D--D$'$ and E--E$'$. The complete analysis observes all 99 tests, without reserved slots or imputed control scores. Judged@10 remains descriptive. Confidence intervals use a paired query bootstrap (10{,}000 resamples, seed 20261028). Tables and significance statements now use this 99-slot family; the historical 36-test B/C report is retained separately.
+
+\subsection{Robustness to spelling errors}
+
+Real queries contain typing errors that the proofread TREC topics do not. We construct one synthetic realization with seed 20261117, perturbing nominal fractions $p \in \{5\%, 10\%\}$ of eligible words in each query. Eligible words are ASCII alphabetic segments of at least two letters; digits, spaces and punctuation remain intact. Each selected word undergoes one feasible random operation: swapping distinct adjacent letters, deleting, inserting or substituting a letter. The two levels are nested: every mutation at 5\% also appears at 10\%. The number of selected words is rounded to the nearest integer, with half rounded up and a minimum of one when an eligible word exists, so realized fractions can differ from nominal levels.
+
+Only queries change; the corpus, BM25 index and corpus embeddings remain fixed. Age and sex are extracted again from the noisy text, and the SQL mask is recomputed without retuning the extraction rules. The partial analysis covers BM25, A, B and C. It reports nDCG@10 and a paired 95\% bootstrap interval for the absolute difference, noisy minus clean, using 10{,}000 resamples. These descriptive intervals sample queries within this single noise realization; they do not quantify variability across independent noise draws. No new significance claim is made or added to the ablation testing family. The perturbations concern English benchmark queries and do not model clinical typing errors or numerical errors.
+
+\subsection{Hardware}
+
+Embeddings, vector search and decision-model scores are computed on a Google Colab T4 GPU (16~GB); the resulting rankings and raw decision scores with provenance are copied back. All other steps, including SQL, BM25 and metric computation, run on a laptop with an Intel Core i5-10210U, 15~GB of RAM and no dedicated GPU. Eos uses the official BF16/FP32 GPU runtime. BGE runs in FP16 on the T4; neither model has a measured laptop-CPU baseline. Colab is a cloud service. The study uses public benchmark records. On-site deployment and processing private clinical records are not tested. Model versions, random seeds and the list of indexed documents are fixed in the code repository.
+
+% ---------------------------------------------------------------------------
+\section{Results}
+\label{sec:results}
+
+\begin{table}[t]
+  \caption{Retrieval quality over all 375{,}580 TREC trials. Means over 75 queries in 2021 and 50 in 2022. D and E rerank the B and C top-50 pools with Eos; BGE controls D$\prime$/E$\prime$ use identical pools.}
+  \label{tab:results-exp1}
+  \centering
+  \small
+  \begin{tabular}{llcccccc}
+    \toprule
+    Year & Config. & P@10 & R@10 & RPrec & MRR & nDCG@10 & Judged@10 \\
+    \midrule
+    2021 & BM25 & 0.153 & 0.029 & 0.087 & 0.311 & 0.275 & 0.699 \\
+     & A & 0.180 & 0.034 & 0.099 & 0.365 & 0.303 & 0.723 \\
+     & B & 0.263 & 0.067 & 0.168 & 0.514 & 0.396 & 0.579 \\
+     & C & 0.281 & 0.071 & 0.186 & 0.554 & 0.413 & 0.595 \\
+     & D & 0.296 & 0.071 & 0.169 & 0.554 & 0.402 & 0.568 \\
+     & E & 0.321 & 0.081 & 0.194 & 0.585 & 0.415 & 0.571 \\
+     & D$'$ & 0.252 & 0.054 & 0.157 & 0.466 & 0.376 & 0.608 \\
+     & E$'$ & 0.276 & 0.059 & 0.175 & 0.511 & 0.393 & 0.605 \\
+    \midrule
+    2022 & BM25 & 0.168 & 0.027 & 0.086 & 0.340 & 0.254 & 0.778 \\
+     & A & 0.210 & 0.036 & 0.106 & 0.389 & 0.277 & 0.744 \\
+     & B & 0.302 & 0.060 & 0.183 & 0.520 & 0.411 & 0.684 \\
+     & C & 0.322 & 0.068 & 0.205 & 0.587 & 0.423 & 0.666 \\
+     & D & 0.378 & 0.081 & 0.205 & 0.634 & 0.474 & 0.694 \\
+     & E & 0.402 & 0.094 & 0.230 & 0.658 & 0.479 & 0.676 \\
+     & D$'$ & 0.296 & 0.058 & 0.186 & 0.498 & 0.413 & 0.736 \\
+     & E$'$ & 0.332 & 0.070 & 0.210 & 0.533 & 0.420 & 0.732 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \caption{Paired differences [95\% bootstrap CI, 10{,}000 resamples] and Holm-adjusted Wilcoxon $p$. Prospective family of 99 tests per year: 99 observed tests and no reserved slots. Selected metrics; all values are available in the JSON report.}
+  \label{tab:diff-exp1}
+  \centering
+  \small
+  \setlength{\tabcolsep}{2.5pt}
+  \begin{tabular}{llcccc}
+    \toprule
+    Pair & Metric & \multicolumn{2}{c}{2021} & \multicolumn{2}{c}{2022} \\
+    & & Difference [95\% CI] & $p_{\mathrm{Holm}}$ & Difference [95\% CI] & $p_{\mathrm{Holm}}$ \\
+    \midrule
+    B $-$ BM25 & P@20 & $+0.0800\;[+0.0447, +0.1160]$ & $<0.001$ & $+0.0930\;[+0.0420, +0.1480]$ & 0.120 \\
+     & R@20 & $+0.0498\;[+0.0316, +0.0697]$ & $<0.001$ & $+0.0516\;[+0.0276, +0.0801]$ & 0.024 \\
+     & nDCG@10 & $+0.1208\;[+0.0621, +0.1778]$ & 0.014 & $+0.1573\;[+0.0877, +0.2306]$ & 0.018 \\
+    \midrule
+    A $-$ BM25 & P@20 & $+0.0187\;[+0.0107, +0.0280]$ & 0.025 & $+0.0250\;[+0.0120, +0.0410]$ & 0.042 \\
+     & R@20 & $+0.0049\;[+0.0012, +0.0089]$ & 0.178 & $+0.0106\;[+0.0031, +0.0225]$ & 0.038 \\
+     & nDCG@10 & $+0.0286\;[+0.0143, +0.0441]$ & 0.010 & $+0.0237\;[+0.0010, +0.0475]$ & 1.000 \\
+    \midrule
+    C $-$ B & P@20 & $+0.0187\;[+0.0087, +0.0300]$ & 0.083 & $+0.0250\;[+0.0110, +0.0400]$ & 0.114 \\
+     & R@20 & $+0.0088\;[+0.0031, +0.0162]$ & 0.118 & $+0.0148\;[+0.0046, +0.0279]$ & 0.193 \\
+     & nDCG@10 & $+0.0178\;[+0.0047, +0.0328]$ & 0.300 & $+0.0117\;[-0.0020, +0.0271]$ & 1.000 \\
+    \midrule
+    C $-$ A & P@20 & $+0.0800\;[+0.0420, +0.1173]$ & 0.002 & $+0.0930\;[+0.0410, +0.1480]$ & 0.149 \\
+     & R@20 & $+0.0537\;[+0.0331, +0.0757]$ & $<0.001$ & $+0.0559\;[+0.0303, +0.0850]$ & 0.024 \\
+     & nDCG@10 & $+0.1100\;[+0.0504, +0.1699]$ & 0.048 & $+0.1453\;[+0.0708, +0.2232]$ & 0.091 \\
+    \midrule
+    D $-$ B & P@20 & $+0.0420\;[+0.0240, +0.0600]$ & 0.013 & $+0.0640\;[+0.0430, +0.0860]$ & $<0.001$ \\
+     & R@20 & $+0.0194\;[+0.0106, +0.0285]$ & $<0.001$ & $+0.0280\;[+0.0182, +0.0388]$ & $<0.001$ \\
+     & nDCG@10 & $+0.0063\;[-0.0365, +0.0492]$ & 1.000 & $+0.0627\;[+0.0055, +0.1146]$ & 0.416 \\
+    \midrule
+    E $-$ C & P@20 & $+0.0473\;[+0.0280, +0.0667]$ & 0.002 & $+0.0660\;[+0.0420, +0.0900]$ & $<0.001$ \\
+     & R@20 & $+0.0235\;[+0.0131, +0.0346]$ & $<0.001$ & $+0.0318\;[+0.0198, +0.0453]$ & $<0.001$ \\
+     & nDCG@10 & $+0.0020\;[-0.0425, +0.0462]$ & 1.000 & $+0.0563\;[-0.0004, +0.1076]$ & 0.747 \\
+    \midrule
+    E $-$ D & P@20 & $+0.0240\;[+0.0113, +0.0387]$ & 0.044 & $+0.0270\;[+0.0110, +0.0440]$ & 0.091 \\
+     & R@20 & $+0.0129\;[+0.0051, +0.0230]$ & 0.057 & $+0.0186\;[+0.0058, +0.0343]$ & 0.210 \\
+     & nDCG@10 & $+0.0135\;[-0.0045, +0.0339]$ & 1.000 & $+0.0053\;[-0.0121, +0.0243]$ & 1.000 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Tables~\ref{tab:results-exp1} and~\ref{tab:diff-exp1} report eight measured configurations and the current 99-slot analysis. Semantic retrieval raises nDCG@10 from 0.275 to 0.396 in 2021 and from 0.254 to 0.411 in 2022. B exceeds BM25 on nine quality metrics in 2021 and seven in 2022 after Holm correction. C exceeds B on R-Precision and MRR in both years; its nDCG@10 difference is not conclusive ($p_{\mathrm{Holm}}=0.300$ and 1.000). A exceeds BM25 on five metrics in 2021 and four in 2022; C exceeds A on eight and three. These counts replace the historical 36-test-family statements. Eos raises nDCG@10 from B's 0.396/0.411 to D's 0.402/0.474 and from C's 0.413/0.423 to E's 0.415/0.479 (2021/2022). None of D--B, E--C or E--D is conclusive on nDCG@10 after Holm correction. D--B and E--C improve P@20 and R@20 in both years; E--C also improves R@10 and R-Precision in 2022. Full per-query scores and all comparisons are archived in \texttt{results/exp1\_decision\_eos\_bge.json}.
+
+Semantic search returns fewer judged trials in its top 10 (Judged@10 0.579 for B against 0.699 for BM25 in 2021, 0.684 against 0.778 in 2022), because the TREC pools were built mostly from other systems. Unjudged trials count as not relevant, so the scores of B and C are probably underestimated relative to BM25. The filter removes 1.24\% (2021) and 1.95\% (2022) of the trials judged eligible, almost always because of an age bound. These figures come from a development setting: the age and sex extraction rules were written on the same 125 queries.
+
+
+\begin{table}[t]
+\centering\small
+\caption{BGE control on identical pools: nDCG@10 differences and adjusted p (99 tests/year).}
+\begin{tabular}{lrrrr}
+\toprule
+Pair & $\Delta$ 2021 & $p_H$ & $\Delta$ 2022 & $p_H$ \\
+\midrule
+D$'$--B & -0.0197 & 1.000 & 0.0020 & 1.000 \\
+E$'$--C & -0.0205 & 1.000 & -0.0024 & 1.000 \\
+D--D$'$ & 0.0259 & 1.000 & 0.0607 & 0.345 \\
+E--E$'$ & 0.0224 & 1.000 & 0.0587 & 0.709 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\paragraph{Eos scoring cost.} The completed v2 run scored all 7{,}340 distinct pairs in 5{,}507.75 seconds (91.80 minutes), including checkpoint and snapshot operations but excluding model loading and preflight. This total is not per-query online latency. Preflight accepted all pairs, with a maximum of 5{,}682 tokens under the 16{,}384-token limit. Raw scores, provenance, status and benchmark were retrieved and verified locally. BGE scores the same pairs in 500.61 seconds (8.34 minutes), including checkpoint operations but excluding loading/preflight; peak PyTorch-allocated CUDA memory is 1.19 GiB, not total GPU memory. Its preflight accepts all 7{,}340 pairs, maximum 5{,}986 tokens under 8{,}192. Precision and runtimes differ, so this duration ratio does not isolate intrinsic model efficiency. No full-run Eos memory peak is available.
+
+\subsection{Partial robustness results}
+
+Table~\ref{tab:noise-partial} reports the available measurements for BM25 and A. All eight absolute-difference intervals include zero, and point differences occur in both directions. This descriptive realization establishes neither equivalence nor general robustness to spelling errors.
+
+Across the 125 queries, age is extracted correctly in 114 cases at 5\% noise and 102 at 10\%, with one wrong extraction at each level and respectively 10 and 22 abstentions. Sex is extracted correctly in 124 and 123 cases, with no wrong extraction and respectively one and two abstentions. The rules remain unchanged after observing noisy queries. These errors and abstentions can alter A's SQL mask.
+
+Table~\ref{tab:noise-semantic} adds B and C, with 5{,}000 metric values crosschecked against \texttt{ir\_measures}. All eight noisy means are below their corresponding clean means. In 2021, point relative losses at 5\% and 10\% noise are 1.08\% and 3.52\% for B, and 1.36\% and 3.14\% for C; all four difference intervals include zero. In 2022, losses are 4.51\% and 6.62\% for B, and 2.30\% and 6.53\% for C. Intervals are entirely negative for B at both levels and for C at 10\%; C's interval at 5\% includes zero. These descriptive intervals are not tests corrected for multiple comparisons; no direct comparison of B's and C's sensitivity is performed.
+
+Noisy queries were encoded on CPU in float32 with the same model, revision and query prefix as clean queries, then searched exactly against the unchanged corpus vectors. One synthetic realization does not establish general robustness. The Eos and BGE rerankers on their own noisy candidate pools have not yet been measured.
+
+\begin{table}[t]
+  \caption{Partial results under synthetic noise: mean nDCG@10 for BM25 and A, and absolute difference $\Delta =$ noisy $-$ clean with paired 95\% bootstrap CI. Each level is compared with the same system's clean queries (75 in 2021, 50 in 2022).}
+  \label{tab:noise-partial}
+  \centering
+  \small
+  \begin{tabular}{llrccc}
+    \toprule
+    Year & System & Noise & Clean & Noisy & $\Delta$ [95\% CI] \\
+    \midrule
+    2021 & BM25 & 5\% & 0.2747 & 0.2809 & $0.0062\;[-0.0049, 0.0175]$ \\
+    2021 & BM25 & 10\% & 0.2747 & 0.2769 & $0.0023\;[-0.0144, 0.0203]$ \\
+    2021 & A & 5\% & 0.3033 & 0.3072 & $0.0039\;[-0.0077, 0.0161]$ \\
+    2021 & A & 10\% & 0.3033 & 0.3004 & $-0.0030\;[-0.0209, 0.0151]$ \\
+    \midrule
+    2022 & BM25 & 5\% & 0.2538 & 0.2474 & $-0.0063\;[-0.0277, 0.0123]$ \\
+    2022 & BM25 & 10\% & 0.2538 & 0.2530 & $-0.0008\;[-0.0266, 0.0236]$ \\
+    2022 & A & 5\% & 0.2775 & 0.2753 & $-0.0022\;[-0.0261, 0.0188]$ \\
+    2022 & A & 10\% & 0.2775 & 0.2664 & $-0.0111\;[-0.0409, 0.0175]$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \caption{B/C under synthetic noise: mean nDCG@10, absolute difference $\Delta =$ noisy $-$ clean with paired 95\% bootstrap CI, and point relative loss $1-\overline{nDCG}_{noisy}/\overline{nDCG}_{clean}$. Same noise realization and queries as Table~\ref{tab:noise-partial}.}
+  \label{tab:noise-semantic}
+  \centering
+  \small
+  \begin{tabular}{llrcccc}
+    \toprule
+    Year & Syst. & Noise & Clean & Noisy & $\Delta$ [95\% CI] & Rel. loss \\
+    \midrule
+    2021 & B & 5\% & 0.3955 & 0.3913 & $-0.0043\;[-0.0237, 0.0147]$ & 1.08\% \\
+    2021 & B & 10\% & 0.3955 & 0.3816 & $-0.0139\;[-0.0355, 0.0065]$ & 3.52\% \\
+    2021 & C & 5\% & 0.4133 & 0.4077 & $-0.0056\;[-0.0245, 0.0126]$ & 1.36\% \\
+    2021 & C & 10\% & 0.4133 & 0.4003 & $-0.0130\;[-0.0354, 0.0089]$ & 3.14\% \\
+    \midrule
+    2022 & B & 5\% & 0.4111 & 0.3925 & $-0.0185\;[-0.0347, -0.0036]$ & 4.51\% \\
+    2022 & B & 10\% & 0.4111 & 0.3839 & $-0.0272\;[-0.0499, -0.0067]$ & 6.62\% \\
+    2022 & C & 5\% & 0.4228 & 0.4130 & $-0.0097\;[-0.0281, 0.0084]$ & 2.30\% \\
+    2022 & C & 10\% & 0.4228 & 0.3952 & $-0.0276\;[-0.0525, -0.0049]$ & 6.53\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Eos/BGE robustness on their own noisy pools remains future work.
+
+% ---------------------------------------------------------------------------
+\section{Discussion and limitations}
+\label{sec:discussion}
+
+Eos reranking improves measured P@20 and R@20 on both annual topic sets, but its nDCG@10 gains do not survive the prospective Holm correction. The larger 2022 point gain therefore does not establish a general improvement in top-10 ranking. Against BGE on identical pools, Eos obtains higher nDCG@10 means, but D--D$'$ and E--E$'$ remain inconclusive after Holm. E exceeds E$'$ on R@20 in both years and on P@20 and R@10 in 2022; D exceeds D$'$ on R@5 and R@10 in 2022. These differences do not establish a general advantage of the decision-model paradigm. No deployed architecture is evaluated.
+
+TREC relevance judgments are incomplete, and Judged@10 exposes but does not correct this limitation. The trial corpus and English patient descriptions do not establish transfer to clinical practice in Central Africa or to French queries. The demographic rules were developed on the same 125 topics used for their evaluation. Eos scores have no demonstrated clinical calibration, and retrieval evaluation is not prospective eligibility validation. The model ranks documents; a clinician must still assess trial eligibility. Colab execution also does not demonstrate on-site deployment.
+
+IU Chest X-ray~\citep{demnerfushman2016iuxray} is reserved for a future text--image experiment. That extension would need separate judgments and a rule preventing target radiological labels from being reused as SQL filters; no radiology result is claimed here. An optional Sol comparison, additional pool sizes, listwise questions and approximate indexing are also future work, not measured variants in this study.
+
+% ---------------------------------------------------------------------------
+\section{Conclusion}
+
+On these public English benchmarks, semantic retrieval improves over BM25, and Eos top-50 reranking improves precision and recall at rank 20 while leaving its nDCG@10 gains inconclusive after correction. The BGE control does not establish general Eos superiority on nDCG@10; clinical use, French-language transfer and radiology are not validated.
+
+% ---------------------------------------------------------------------------
+\small
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

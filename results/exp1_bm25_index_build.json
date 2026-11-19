@@ -1,0 +1,16 @@
+{
+  "n_documents": 375580,
+  "n_distinct_words": 400632,
+  "k1": 0.9,
+  "b": 0.4,
+  "text_fields": [
+    "title",
+    "conditions (XML brut)",
+    "summary",
+    "detailed_description",
+    "eligibility"
+  ],
+  "n_trials_with_conditions": 374720,
+  "build_seconds": 364.0,
+  "peak_memory_gb": 4.33
+}

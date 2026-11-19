@@ -1,0 +1,18 @@
+{
+  "n_queries": 125,
+  "age": {
+    "correct": 125,
+    "wrong": 0,
+    "abstained": 0,
+    "found_rate": 1.0,
+    "precision_when_found": 1.0
+  },
+  "sex": {
+    "correct": 125,
+    "wrong": 0,
+    "abstained": 0,
+    "found_rate": 1.0,
+    "precision_when_found": 1.0
+  },
+  "errors": []
+}

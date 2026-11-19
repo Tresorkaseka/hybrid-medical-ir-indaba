@@ -1,0 +1,60 @@
+{
+ "seed": 20261117,
+ "noise_sha256": "f2b7145d4f683b1816f33ddb75bf8c00847584622da5fdf2a2a53fb977fc9f72",
+ "levels": {
+  "0.05": {
+   "n_queries": 125,
+   "age": {
+    "correct": 114,
+    "wrong": 1,
+    "abstained": 10,
+    "found_rate": 0.92,
+    "precision_when_found": 0.991304347826087,
+    "accuracy": 0.912
+   },
+   "sex": {
+    "correct": 124,
+    "wrong": 0,
+    "abstained": 1,
+    "found_rate": 0.992,
+    "precision_when_found": 1.0,
+    "accuracy": 0.992
+   },
+   "errors": [
+    {
+     "query_key": "2021/27",
+     "field": "age",
+     "expected": 53.0,
+     "predicted": 20.0
+    }
+   ]
+  },
+  "0.1": {
+   "n_queries": 125,
+   "age": {
+    "correct": 102,
+    "wrong": 1,
+    "abstained": 22,
+    "found_rate": 0.824,
+    "precision_when_found": 0.9902912621359223,
+    "accuracy": 0.816
+   },
+   "sex": {
+    "correct": 123,
+    "wrong": 0,
+    "abstained": 2,
+    "found_rate": 0.984,
+    "precision_when_found": 1.0,
+    "accuracy": 0.984
+   },
+   "errors": [
+    {
+     "query_key": "2021/27",
+     "field": "age",
+     "expected": 53.0,
+     "predicted": 20.0
+    }
+   ]
+  }
+ }
+}

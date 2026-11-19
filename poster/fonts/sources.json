@@ -1,0 +1,42 @@
+[
+  {
+    "file": "Lato-Light.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Light.ttf",
+    "sha256": "cf2a774503baf418d584f49967bd160e1e03f087c13b25602f28024ec7788f08"
+  },
+  {
+    "file": "Lato-LightItalic.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-LightItalic.ttf",
+    "sha256": "700e6722fd14a10e7646347a6b14c486d4c364a373ba61c70e0b5ccee7811635"
+  },
+  {
+    "file": "Lato-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Regular.ttf",
+    "sha256": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251"
+  },
+  {
+    "file": "Lato-Italic.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/Lato-Italic.ttf",
+    "sha256": "e399c44efe1387100531d26c7e4800c5d12251b890d6654a3098c7c679cb1786"
+  },
+  {
+    "file": "lato-OFL.txt",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/OFL.txt",
+    "sha256": "74ba064d03f1f1c4a952da936c3eb71866c34404916734de3cae73b34357e59e"
+  },
+  {
+    "file": "Raleway[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/raleway/Raleway%5Bwght%5D.ttf",
+    "sha256": "8bbcc3eb8275c388f4bcd998832f8a4b943eadbaf6a595205312774b5951aefb"
+  },
+  {
+    "file": "Raleway-Italic[wght].ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/raleway/Raleway-Italic%5Bwght%5D.ttf",
+    "sha256": "96629caf2202183fab46c70237055a7d67e6a5400b85413d45a77ed6f2a0770c"
+  },
+  {
+    "file": "raleway-OFL.txt",
+    "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/raleway/OFL.txt",
+    "sha256": "7e946cf1171784d1015279e7dc35f827957a6b5d1f1f659ae0c98e5f5e37ed9b"
+  }
+]

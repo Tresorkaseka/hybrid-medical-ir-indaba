@@ -1,0 +1,51 @@
+{
+  "n_trials": 375580,
+  "gender": {
+    "All": 320948,
+    "Female": 36496,
+    "Male": 17273,
+    "None": 863
+  },
+  "accepts_healthy_volunteers": {
+    "0": 272139,
+    "1": 95542,
+    "None": 7899
+  },
+  "phase": {
+    "Phase 1/Phase 2": 11816,
+    "None": 82931,
+    "N/A": 127333,
+    "Phase 1": 34719,
+    "Phase 3": 33131,
+    "Phase 2": 48204,
+    "Phase 2/Phase 3": 5725,
+    "Phase 4": 28105,
+    "Early Phase 1": 3616
+  },
+  "missing_min_age": 30951,
+  "missing_max_age": 179861,
+  "age_formats": {
+    "minimum_age: # Years": 334980,
+    "maximum_age: # Years": 188534,
+    "maximum_age: N/A": 178998,
+    "minimum_age: N/A": 30088,
+    "minimum_age: # Months": 4993,
+    "maximum_age: # Months": 3460,
+    "minimum_age: # Year": 2430,
+    "maximum_age: # Days": 1503,
+    "maximum_age: # Weeks": 1221,
+    "minimum_age: # Weeks": 1003,
+    "minimum_age: # Month": 991,
+    "minimum_age: None": 863,
+    "maximum_age: None": 863,
+    "maximum_age: # Hours": 417,
+    "maximum_age: # Year": 237,
+    "minimum_age: # Days": 232,
+    "maximum_age: # Month": 119,
+    "maximum_age: # Minutes": 89,
+    "maximum_age: # Day": 73,
+    "maximum_age: # Week": 32,
+    "maximum_age: # Hour": 20,
+    "maximum_age: # Minute": 14
+  }
+}

@@ -1,0 +1,30 @@
+[project]
+name = "hybrid-ir"
+version = "0.1.0"
+description = "Architecture hybride SQL + recherche sémantique + modèle de décision pour la récupération d'informations médicales"
+requires-python = ">=3.11"
+authors = [{ name = "Kaseka Mwavingi Tresor" }]
+dependencies = [
+  "ir_datasets",
+  "numpy",
+  "pandas",
+  "scipy",
+  "tqdm",
+  "tokenizers",
+  "huggingface_hub",
+  "markdown-it-py",
+]
+
+[project.optional-dependencies]
+ml = ["sentence-transformers", "qdrant-client"]
+dev = ["pytest", "ir_measures"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

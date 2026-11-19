@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "Pour citer les artefacts de recherche, utilisez cette référence et le commit consulté."
+title: "Filtrer, retrouver, décider : architecture hybride pour la recherche d’informations médicales"
+authors:
+  - family-names: "Kaseka Mwavingi"
+    given-names: "Tresor"
+    affiliation: "Université Nouveaux Horizons"
+version: "indaba-2026-artifact-1"
+date-released: "2026-11-19"
+url: "https://github.com/Tresorkaseka/hybrid-medical-ir-indaba"
+repository-code: "https://github.com/Tresorkaseka/hybrid-medical-ir-indaba"
+abstract: "Artefacts de recherche TREC Clinical Trials 2021–2022 : recherche lexicale, filtre démographique, recherche sémantique exacte et reclassement Eos/BGE. Pas de validation clinique."

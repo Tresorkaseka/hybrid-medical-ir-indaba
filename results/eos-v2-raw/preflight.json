@@ -1,0 +1,8 @@
+{
+  "n_pairs": 7340,
+  "n_valid": 7340,
+  "invalid": [],
+  "max_tokens": 5682,
+  "mean_tokens": 1221.091689373297,
+  "context_limit": 16384
+}

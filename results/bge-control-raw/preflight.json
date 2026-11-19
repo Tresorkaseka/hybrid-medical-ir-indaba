@@ -1,0 +1,19 @@
+{
+  "n_pairs": 7340,
+  "n_valid": 7340,
+  "context_limit": 8192,
+  "max_tokens": 5986,
+  "invalid": [],
+  "preprocessing": {
+    "input": [
+      "patient description",
+      "complete trial embedding text"
+    ],
+    "pair_tokenization": true,
+    "add_special_tokens": true,
+    "truncation": false,
+    "maximum_pair_tokens": 8192,
+    "normalization": "none",
+    "score_kind": "raw sequence-classification logit"
+  }
+}

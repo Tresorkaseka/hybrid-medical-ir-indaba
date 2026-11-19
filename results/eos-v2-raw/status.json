@@ -1,0 +1,40 @@
+{
+  "status": "complete",
+  "n_expected": 7340,
+  "n_reused": 0,
+  "provenance": {
+    "input_sha256": "42988327922fcc5d1cc0c7f5431d531fae441265dc0111fbc9c813c766ff1bd8",
+    "model_id": "vllm-sr/Decision-2.0-Eos-0.8B",
+    "revision": "52cad37ef21f598302fe964cbfa164739cb965d5",
+    "prompt_sha256": "bf7a2afc311cddd2f281bace4eea3ba175a005adc5f131b0e3ec5d5141fca91f",
+    "code_sha256": "1b705a9c0bcf12f7f43a9363f079f75235c2378b4eaa9e962aa8437f7468ea34"
+  },
+  "environment": {
+    "python": "3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]",
+    "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+    "torch": "2.14.1+cu130",
+    "cuda": "13.0",
+    "gpu": "Tesla T4",
+    "capability": [
+      7,
+      5
+    ],
+    "memory_total_bytes": 15637086208,
+    "bf16_reported": true,
+    "bf16_native": false,
+    "transformers": "5.22.1",
+    "safetensors": "0.8.0",
+    "huggingface_hub": "1.33.0",
+    "tokenizers": "0.23.3"
+  },
+  "preflight": {
+    "n_pairs": 7340,
+    "n_valid": 7340,
+    "invalid": [],
+    "max_tokens": 5682,
+    "mean_tokens": 1221.091689373297,
+    "context_limit": 16384
+  },
+  "n_scored": 7340,
+  "this_run_seconds": 5507.748912797001
+}
